@@ -47,6 +47,7 @@ export function AppShell() {
           </NavLink>
           <nav aria-label="Primary" className="site-nav">
             <NavLink to="/events" className="nav-link">Events</NavLink>
+            <NavLink to="/book" className="nav-link">Cinema &amp; Bus</NavLink>
             <NavLink to="/bookings" className="nav-link">My bookings</NavLink>
             <NavLink to="/design" className="nav-link nav-link-optional">Design</NavLink>
           </nav>

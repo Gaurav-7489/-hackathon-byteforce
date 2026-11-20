@@ -33,9 +33,19 @@ function RouteError() {
 const router = createBrowserRouter([
   {
     path: '/login',
-    lazy: async () => ({ Component: (await import('./routes/Login')).Login }),
+    lazy: async () => ({ Component: (await import('./routes/Onboard')).Onboard }),
     HydrateFallback: RouteFallback,
     errorElement: <RouteError />,
+  },
+  {
+    // Cinema / bus booking with the live 3D seat view (outside the dark app shell).
+    element: <RequireAuth />,
+    HydrateFallback: RouteFallback,
+    errorElement: <RouteError />,
+    children: [
+      { path: '/book', element: <Navigate to="/book/cinema" replace /> },
+      { path: '/book/:mode', lazy: async () => ({ Component: (await import('./routes/Book')).Book }) },
+    ],
   },
   {
     element: <AppShell />,
@@ -46,7 +56,7 @@ const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { index: true, element: <Navigate to="/events" replace /> },
+          { index: true, element: <Navigate to="/login" replace /> },
           { path: '/events', lazy: async () => ({ Component: (await import('./routes/Events')).Events }) },
           { path: '/events/:id', lazy: async () => ({ Component: (await import('./routes/EventDetail')).EventDetailPage }) },
           { path: '/checkout', lazy: async () => ({ Component: (await import('./routes/Checkout')).Checkout }) },
