@@ -160,18 +160,18 @@ All features share **one authoritative inventory** (the mock API in `src/lib/api
 
 ## Verification
 
-The following was measured locally on the production build (`vite preview`), headless Chromium, 20 Nov 2026:
+Measured locally on the production build (`vite preview`), headless Chromium, 20 Nov 2026, after the campus-intelligence work:
 
 | Check | Result |
 |---|---|
-| `tsc -b` (strict) | ✅ passes |
-| Vitest | ✅ 17 / 17 (seat logic, AI parsing/validation, mock API contract, seat-map keyboard + labels) |
-| Playwright e2e | ✅ 8 / 8 with retries off. Covers login validation, **keyboard-only booking**, 5th-seat block, hold conflict + swap, AI suggest → use, AI timeout fallback, bookings tabs, and mobile checks (no horizontal scroll, ≥44 px seats, sticky hold bar). The cancel dialog and success ticket were checked in exploratory screenshot runs, not by an automated assertion |
-| Lighthouse, `/events`, mobile preset | Performance **95–98**, Accessibility **100** |
-| Lighthouse, `/events`, desktop preset | Performance **100**, Accessibility **100**, Best Practices **100** |
-| Horizontal overflow at 360 / 390 / 1280 px | 0 px on every route checked |
+| `tsc -b` (strict) | ✅ passes, zero `any` |
+| Vitest | ✅ 42 / 42 — the original 17 plus 25 for buddy seating, accessibility matching, QuietZone, view estimates, AutoRescue ranking, budget, schedule overlaps + `.ics`, splits, matchmaker, waitlist chance, return policy, FairQueue vs FCFS, load-sim seat conservation, crowd model, no-show policy, forecast, step-free routing, store schema |
+| Playwright e2e | ✅ 17 / 17 with retries off: the 8 original specs plus buddy seating (highlight ≠ select, never holds), wheelchair-space matching, FairQueue room, schedule clash, sold-out → waitlist offer → checkout, organizer dashboards + no-show release, book → verified return → history, offline vault, ranked AutoRescue |
+| Console errors / horizontal overflow | 0 on all 12 primary routes at 1360 px and Pixel 5 |
+| Lighthouse (mobile preset, signed in) | `/events` 96 · `/events/neon-monsoon` 100 · `/discover` 100 · `/campus` 100 · `/tickets` 100 · `/bookings` 99 performance; **100 accessibility and 100 best practices on all six**; LCP 1.0–1.6 s, CLS ≤ 0.078, TBT ≤ 180 ms |
+| Initial JS | ≈150 KB gzip (entry 104 KB + React 46 KB); every new screen and the 3D twin are separate lazy chunks |
 
-Scores from a deployed URL may differ. Re-run Lighthouse against the deployment.
+Known flakiness by design: the mock fails ~1 in 20 requests and the assistant reports “overloaded” ~1 in 20 times, so an individual e2e run can hit those paths; the config keeps one retry. Scores from a deployed URL may differ — re-run Lighthouse against the deployment.
 
 ## Deployment
 
@@ -198,7 +198,7 @@ Scores from a deployed URL may differ. Re-run Lighthouse against the deployment.
 
 ## Performance engineering
 
-- **Route-level splitting** for every screen (13 lazy routes) and **component-level** lazy loading for Smart tools, the nav sheet, organizer panels, the 3D twin and the 3D preview. Only one WebGL context exists at a time.
+- **Route-level splitting** for every screen (16 lazy routes) and **component-level** lazy loading for Smart tools, the nav sheet, organizer panels, the 3D twin and the 3D preview. Only one WebGL context exists at a time.
 - **Smart prefetch:** event cards warm the detail chunk on hover/focus (skipped on Save-Data / 2G); the offline-vault chunk is warmed at idle so it opens without signal.
 - **Network:** in-flight GET de-duplication, 20 s timeouts (AbortController), capped exponential backoff for idempotent reads only — holds/confirms/returns are **never retried automatically**. Seat polling already pauses in hidden tabs.
 - **Low-end mode:** Profile → *Reduce visual effects* (auto-on for Save-Data or ≤ 2 GB devices) disables WebGL, blur and decorative animation via one `data-effects` attribute.

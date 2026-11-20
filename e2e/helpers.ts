@@ -2,10 +2,11 @@ import { expect, type Page } from '@playwright/test'
 
 export async function login(page: Page) {
   await page.goto('/login')
-  await page.getByLabel('College email').fill('student@seatlock.dev')
-  await page.getByLabel('Password', { exact: true }).fill('seatlock123')
   // The mock API fails ~1 in 20 requests by design; retry like a user would.
+  // React 19 resets the form after a failed action, so re-enter the credentials each time.
   for (let attempt = 0; attempt < 3; attempt++) {
+    await page.getByLabel('College email').fill('student@seatlock.dev')
+    await page.getByLabel('Password', { exact: true }).fill('seatlock123')
     await page.getByRole('button', { name: /sign in/i }).click()
     const ok = await page.waitForURL(/\/events/, { timeout: 12_000 }).then(() => true, () => false)
     if (ok) return

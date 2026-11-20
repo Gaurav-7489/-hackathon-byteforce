@@ -3,9 +3,9 @@ import { demo, fastNetwork, login } from './helpers'
 
 async function loginAs(page: Page, email: string, password: string) {
   await page.goto('/login')
-  await page.getByLabel('College email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
   for (let attempt = 0; attempt < 3; attempt++) {
+    await page.getByLabel('College email').fill(email)
+    await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByRole('button', { name: /sign in/i }).click()
     if (await page.waitForURL(/\/events/, { timeout: 12_000 }).then(() => true, () => false)) return
   }
