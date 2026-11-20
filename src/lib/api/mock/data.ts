@@ -25,6 +25,8 @@ type Seed = Omit<EventDetail, 'seatsLeft' | 'totalSeats' | 'priceFrom' | 'priceT
   hour: number
   basePrice: number
   demand: number
+  /** Force every seat to booked (a sold-out show for the waitlist demo). */
+  soldOut?: boolean
 }
 
 const SEEDS: Seed[] = [
@@ -45,7 +47,7 @@ const SEEDS: Seed[] = [
   {
     id: 'synthwave-convocation', title: 'Synthwave Convocation', subtitle: 'Electronic live set', category: 'Music',
     venue: 'Convocation Hall', day: 4, hour: 21, basePrice: 400, demand: 0.7, durationMinutes: 150,
-    organizer: 'E-Cell × DJ Club', lineup: ['Analog Hearts', 'NULLPTR', 'Sinewave Sisters'],
+    organizer: 'E-Cell × DJ Club', lineup: ['Analog Hearts', 'NULLPTR', 'Sinewave Sisters'], highDemand: true, tags: ['electronic', 'music'],
     description: 'Retro-futurist synths, laser lighting and a hall-wide light show synced to the beat.',
     poster: { hue: 290, accent: 185, motif: 'grid' },
   },
@@ -83,6 +85,20 @@ const SEEDS: Seed[] = [
     organizer: 'Robotics Society', lineup: ['Line followers', 'Robo-soccer', 'Combat bots'],
     description: 'Autonomous racers, robo-soccer and a combat-bot finale — ear protection recommended.',
     poster: { hue: 220, accent: 95, motif: 'grid' },
+  },
+  {
+    id: 'campus-unplugged', title: 'Campus Unplugged', subtitle: 'Acoustic sets by the lake', category: 'Music',
+    venue: 'Open Air Theatre', day: 3, hour: 18, basePrice: 220, demand: 0.9, durationMinutes: 140, soldOut: true,
+    organizer: 'Music Society', lineup: ['Lakeside Trio', 'Two Strings & a Story', 'Open jam'], tags: ['indie', 'music'],
+    description: 'Sold out in eleven minutes. Returns and no-show releases go to the waitlist first.',
+    poster: { hue: 168, accent: 40, motif: 'rings' },
+  },
+  {
+    id: 'design-sprint', title: 'Design Sprint Workshop', subtitle: 'Prototype an app in 3 hours', category: 'Tech',
+    venue: 'Seminar Hall B', day: 5, hour: 10, basePrice: 0, demand: 0.2, durationMinutes: 180,
+    organizer: 'Design Club', lineup: ['Problem framing', 'Crazy 8s', 'Figma prototyping'], tags: ['workshop', 'tech', 'startups'],
+    description: 'A hands-on sprint: frame a campus problem, sketch, prototype and test it with real students.',
+    poster: { hue: 320, accent: 160, motif: 'stripes' },
   },
 ]
 
@@ -126,8 +142,9 @@ export function generateSeats(eventId: string, basePrice: number, demand: number
 
 export function seedEvents(): { events: EventDetail[]; seats: Record<string, Seat[]> } {
   const seats: Record<string, Seat[]> = {}
-  const events = SEEDS.map(({ day, hour, basePrice, demand, ...rest }) => {
+  const events = SEEDS.map(({ day, hour, basePrice, demand, soldOut, ...rest }) => {
     const s = generateSeats(rest.id, basePrice, demand)
+    if (soldOut) for (const seat of s) if (seat.status === 'available') seat.status = 'booked'
     seats[rest.id] = s
     const prices = s.map((x) => x.price)
     return {
@@ -157,4 +174,6 @@ export function seedPastBookings(): Booking[] {
   ]
 }
 
-export const SEEDED_STUDENT = { id: 'stu_42', name: 'Aarav Sharma', email: 'student@seatlock.dev', password: 'seatlock123' }
+export const SEEDED_STUDENT = { id: 'stu_42', name: 'Aarav Sharma', email: 'student@seatlock.dev', password: 'seatlock123', role: 'student' as const }
+/** Demo organizer account — a presentation role only, not real authorization. */
+export const SEEDED_ORGANIZER = { id: 'org_7', name: 'Meera Iyer (Organizer)', email: 'organizer@seatlock.dev', password: 'organizer123', role: 'organizer' as const }

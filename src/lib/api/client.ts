@@ -88,23 +88,75 @@ async function errorFrom(res: Response): Promise<ApiError> {
   return new ApiError('server_error', message, res.status)
 }
 
+const REQUEST_TIMEOUT_MS = 20_000
+
+/** Combine the caller's signal with a timeout; falls back gracefully on older browsers. */
+function withTimeout(signal: AbortSignal | undefined, ms: number): { signal: AbortSignal; timedOut: () => boolean; done: () => void } {
+  const ctrl = new AbortController()
+  let fired = false
+  const t = setTimeout(() => { fired = true; ctrl.abort(new DOMException('Timed out', 'TimeoutError')) }, ms)
+  const onAbort = () => ctrl.abort(signal?.reason)
+  if (signal) {
+    if (signal.aborted) ctrl.abort(signal.reason)
+    else signal.addEventListener('abort', onAbort, { once: true })
+  }
+  return {
+    signal: ctrl.signal,
+    timedOut: () => fired,
+    done: () => { clearTimeout(t); signal?.removeEventListener('abort', onAbort) },
+  }
+}
+
+const backoff = (attempt: number) => new Promise((r) => setTimeout(r, Math.min(2000, 250 * 2 ** attempt) * (0.75 + Math.random() * 0.5)))
+
+/** In-flight GET de-duplication: identical concurrent reads share one network request. */
+const inflightGets = new Map<string, Promise<unknown>>()
+
 async function request<S extends z.ZodMiniType>(
   method: string,
   path: string,
   schema: S,
   opts: { body?: unknown; signal?: AbortSignal; retries?: number } = {},
 ): Promise<z.infer<S>> {
-  // Idempotent GETs get one silent retry on 5xx — the mock fails ~1 in 20 requests.
-  const retries = opts.retries ?? (method === 'GET' ? 1 : 0)
+  if (method === 'GET' && !opts.signal) {
+    const key = `${path}`
+    const existing = inflightGets.get(key) as Promise<z.infer<S>> | undefined
+    if (existing) return existing
+    const p = rawRequest(method, path, schema, opts).finally(() => inflightGets.delete(key))
+    inflightGets.set(key, p)
+    return p
+  }
+  return rawRequest(method, path, schema, opts)
+}
+
+async function rawRequest<S extends z.ZodMiniType>(
+  method: string,
+  path: string,
+  schema: S,
+  opts: { body?: unknown; signal?: AbortSignal; retries?: number },
+): Promise<z.infer<S>> {
+  // Idempotent GETs get silent retries with exponential backoff on 5xx/network —
+  // the mock fails ~1 in 20 requests. Writes (hold/confirm/cancel) are never retried blindly.
+  const retries = opts.retries ?? (method === 'GET' ? 2 : 0)
   for (let attempt = 0; ; attempt++) {
-    const res = await send(method, path, opts.body, opts.signal)
+    const t = withTimeout(opts.signal, REQUEST_TIMEOUT_MS)
+    let res: Response
+    try {
+      res = await send(method, path, opts.body, t.signal)
+    } catch (e) {
+      t.done()
+      const err = t.timedOut() ? new ApiError('timeout', 'The server took too long to respond.') : toApiError(e)
+      if (attempt < retries && (err.code === 'network' || err.code === 'timeout')) { await backoff(attempt); continue }
+      throw err
+    }
+    t.done()
     if (res.ok) {
       const parsed = schema.safeParse(await res.json())
       if (!parsed.success) throw new ApiError('bad_response', 'The server sent data we did not understand.', res.status)
       return parsed.data
     }
     const e = await errorFrom(res)
-    if (attempt < retries && e.code === 'server_error') continue
+    if (attempt < retries && e.code === 'server_error') { await backoff(attempt); continue }
     throw e
   }
 }

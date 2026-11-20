@@ -32,6 +32,9 @@ export class ApiError extends Error {
 
 export function toApiError(err: unknown): ApiError {
   if (err instanceof ApiError) return err
+  if (err instanceof DOMException && err.name === 'TimeoutError') {
+    return new ApiError('timeout', 'The server took too long to respond.')
+  }
   if (err instanceof DOMException && err.name === 'AbortError') {
     return new ApiError('aborted', 'Request was cancelled.')
   }

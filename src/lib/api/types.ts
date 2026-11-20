@@ -11,6 +11,8 @@ export const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string(),
+  /** Presentation role for the demo (organizer screens). Not an authorization boundary. */
+  role: z.optional(z.enum(['student', 'organizer'])),
 })
 export type User = z.infer<typeof UserSchema>
 
@@ -36,6 +38,9 @@ export const EventSummarySchema = z.object({
     accent: z.number(),
     motif: z.enum(['rings', 'bars', 'grid', 'waves', 'orbit', 'stripes']),
   }),
+  /** Optional organizer flags; absent on APIs that don't send them. */
+  highDemand: z.optional(z.boolean()),
+  tags: z.optional(z.array(z.string())),
 })
 export type EventSummary = z.infer<typeof EventSummarySchema>
 

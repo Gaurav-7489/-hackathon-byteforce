@@ -1,6 +1,6 @@
 import type { AiAssistRequest, Booking, EventDetail, Hold, Seat } from '../types'
 import { recommend } from './ai'
-import { SEEDED_STUDENT, seedEvents, seedPastBookings } from './data'
+import { SEEDED_ORGANIZER, SEEDED_STUDENT, seedEvents, seedPastBookings } from './data'
 
 /**
  * In-browser stand-in for the organizer mock API, used when VITE_API_BASE_URL
@@ -9,11 +9,21 @@ import { SEEDED_STUDENT, seedEvents, seedPastBookings } from './data'
  * and other students holding/booking seats in the background.
  */
 
-const STORAGE_KEY = 'seatlock-mock-db-v3'
+const STORAGE_KEY = 'seatlock-mock-db-v4'
 const HOLD_MS = 5 * 60_000
 
 interface OtherHold { seatId: string; until: number; outcome: 'booked' | 'available' }
 interface MyHold extends Hold { userId: string }
+export interface MockMetrics {
+  holds: number
+  conflicts: number
+  confirmed: number
+  expired: number
+  cancelled: number
+  released: number
+  noShowReleased: number
+  waitlistOffers: number
+}
 interface Db {
   events: EventDetail[]
   seats: Record<string, Seat[]>
@@ -21,6 +31,15 @@ interface Db {
   others: Record<string, OtherHold[]>
   lastTick: Record<string, number>
   bookings: Booking[]
+  metrics: Record<string, MockMetrics>
+  /** Occupancy history (seats left) per event, sampled on ticks, for organizer forecasts. */
+  history: Record<string, number[]>
+}
+
+const emptyMetrics = (): MockMetrics => ({ holds: 0, conflicts: 0, confirmed: 0, expired: 0, cancelled: 0, released: 0, noShowReleased: 0, waitlistOffers: 0 })
+function metric(d: Db, eventId: string, k: keyof MockMetrics, n = 1) {
+  const m = (d.metrics[eventId] ??= emptyMetrics())
+  m[k] += n
 }
 
 export interface DemoControls {
@@ -51,15 +70,27 @@ function load(): Db {
       const parsed = JSON.parse(raw) as Db
       // Re-seed if the newest event is in the past (stale cache from an old demo day).
       const latest = Math.max(...parsed.events.map((e) => Date.parse(e.startsAt)))
-      if (latest > Date.now()) return (db = parsed)
+      if (latest > Date.now()) {
+        parsed.metrics ??= {}
+        parsed.history ??= {}
+        return (db = parsed)
+      }
     }
   } catch {
     /* corrupted or unavailable storage — fall through to a fresh seed */
   }
   const { events, seats } = seedEvents()
-  db = { events, seats, holds: [], others: {}, lastTick: {}, bookings: seedPastBookings() }
+  db = { events, seats, holds: [], others: {}, lastTick: {}, bookings: seedPastBookings(), metrics: {}, history: {} }
   save()
   return db
+}
+
+// Browser-local multi-tab sync: another tab wrote the mock DB, so drop our in-memory copy.
+// (Same-browser only; this is not distributed consistency.)
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORAGE_KEY) db = null
+  })
 }
 
 function save() {
@@ -121,6 +152,7 @@ function tick(eventId: string) {
   d.others[eventId] = others.filter((o) => o.until > now)
   // Expire my own holds.
   for (const hold of d.holds.filter((h) => h.eventId === eventId && Date.parse(h.expiresAt) <= now)) {
+    metric(d, eventId, 'expired')
     for (const s of seats) {
       if (hold.seatIds.includes(s.id) && s.heldByMe) {
         s.status = 'available'
@@ -144,12 +176,17 @@ function tick(eventId: string) {
     d.others[eventId]?.push({ seatId: seat.id, until: now + 12_000 + Math.random() * 30_000, outcome: Math.random() < 0.55 ? 'booked' : 'available' })
   }
   event.seatsLeft = seats.filter((s) => s.status === 'available').length
+  if (steps > 0) {
+    const h = (d.history[eventId] ??= [])
+    h.push(event.seatsLeft)
+    if (h.length > 60) h.splice(0, h.length - 60)
+  }
   save()
 }
 
 function auth(init: RequestInit) {
-  const h = new Headers(init.headers)
-  return h.get('authorization') === `Bearer mock-token-${SEEDED_STUDENT.id}`
+  const h = new Headers(init.headers).get('authorization')
+  return h === `Bearer mock-token-${SEEDED_STUDENT.id}` || h === `Bearer mock-token-${SEEDED_ORGANIZER.id}`
 }
 
 function aiStream(req: AiAssistRequest, signal?: AbortSignal | null): Response {
@@ -207,11 +244,12 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
 
   if (method === 'POST' && path === '/auth/login') {
     const email = String(body.email ?? '').trim().toLowerCase()
-    if (email !== SEEDED_STUDENT.email || body.password !== SEEDED_STUDENT.password) {
+    const account = [SEEDED_STUDENT, SEEDED_ORGANIZER].find((a) => a.email === email && a.password === body.password)
+    if (!account) {
       return err(401, 'invalid_credentials', 'That email and password don’t match.')
     }
-    const { password: _pw, ...user } = SEEDED_STUDENT
-    return json(200, { token: `mock-token-${SEEDED_STUDENT.id}`, user })
+    const { password: _pw, ...user } = account
+    return json(200, { token: `mock-token-${account.id}`, user })
   }
 
   if (!auth(init)) return err(401, 'unauthorized', 'Please sign in again.')
@@ -258,6 +296,7 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
       conflicting = [victim]
     }
     if (conflicting.length) {
+      metric(d, id, 'conflicts')
       save()
       return err(409, 'conflict', `Seat${conflicting.length > 1 ? 's' : ''} ${conflicting.join(', ')} ${conflicting.length > 1 ? 'were' : 'was'} just taken by another student.`, { conflictingSeatIds: conflicting })
     }
@@ -273,6 +312,7 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
     }
     for (const s of seats) if (seatIds.includes(s.id)) { s.status = 'held'; s.heldByMe = true }
     d.holds.push(hold)
+    metric(d, id, 'holds')
     save()
     const { userId: _u, ...pub } = hold
     return json(201, { hold: pub, serverTime: new Date().toISOString() })
@@ -298,6 +338,7 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
     }
     d.bookings.unshift(booking)
     d.holds = d.holds.filter((h) => h.id !== hold.id)
+    metric(d, hold.eventId, 'confirmed')
     save()
     return json(201, { booking })
   }
@@ -307,8 +348,13 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
   if (method === 'DELETE' && (m = path.match(/^\/bookings\/([^/]+)$/))) {
     const booking = d.bookings.find((b) => b.id === m?.[1])
     if (!booking) return err(404, 'not_found', 'Booking not found.')
+    // Prevent duplicate returns: a ticket can only leave your ownership once.
+    if (booking.status === 'cancelled') return err(409, 'already_cancelled', 'This booking was already returned.')
     booking.status = 'cancelled'
     for (const s of d.seats[booking.eventId] ?? []) if (booking.seats.some((x) => x.id === s.id)) s.status = 'available'
+    metric(d, booking.eventId, 'cancelled')
+    const ev = d.events.find((e) => e.id === booking.eventId)
+    if (ev) ev.seatsLeft = (d.seats[booking.eventId] ?? []).filter((s) => s.status === 'available').length
     save()
     return json(200, { booking })
   }
@@ -326,4 +372,157 @@ export function stealSeat(eventId: string, seatId: string) {
   seat.status = 'held'
   ;(d.others[eventId] ??= []).push({ seatId, until: Date.now() + 45_000, outcome: 'booked' })
   save()
+}
+
+/* ==========================================================================
+   Inventory operations for the campus features (mock mode only). They all act
+   on the same DB as the HTTP routes above, so seat ownership never diverges.
+   ========================================================================== */
+
+export function inventory(eventId: string): Seat[] {
+  return (load().seats[eventId] ?? []).map((s) => ({ ...s }))
+}
+
+export function mockEvents(): EventDetail[] {
+  return load().events.map((e) => ({ ...e }))
+}
+
+export function mockMetrics(eventId: string): MockMetrics {
+  return { ...(load().metrics[eventId] ?? emptyMetrics()) }
+}
+
+export function occupancyHistory(eventId: string): number[] {
+  return [...(load().history[eventId] ?? [])]
+}
+
+export function advance(eventId: string) {
+  tick(eventId)
+}
+
+function refreshLeft(d: Db, eventId: string) {
+  const ev = d.events.find((e) => e.id === eventId)
+  if (ev) ev.seatsLeft = (d.seats[eventId] ?? []).filter((s) => s.status === 'available').length
+}
+
+/**
+ * Reserve released seats for the waitlist so the background crowd can't grab
+ * them while an offer is open. Returns the reserved seat ids.
+ */
+export function reserveForWaitlist(eventId: string, seatIds: string[], ttlMs: number): string[] {
+  const d = load()
+  const seats = d.seats[eventId] ?? []
+  const out: string[] = []
+  for (const id of seatIds) {
+    const s = seats.find((x) => x.id === id)
+    if (!s || s.status !== 'available') continue
+    s.status = 'held'
+    ;(d.others[eventId] ??= []).push({ seatId: id, until: Date.now() + ttlMs, outcome: 'available' })
+    out.push(id)
+  }
+  metric(d, eventId, 'waitlistOffers', out.length ? 1 : 0)
+  refreshLeft(d, eventId)
+  save()
+  return out
+}
+
+/** Resolve a waitlist reservation held for a simulated student. */
+export function resolveReserved(eventId: string, seatIds: string[], outcome: 'booked' | 'available') {
+  const d = load()
+  const seats = d.seats[eventId] ?? []
+  d.others[eventId] = (d.others[eventId] ?? []).filter((o) => !seatIds.includes(o.seatId))
+  for (const s of seats) if (seatIds.includes(s.id) && s.status === 'held' && !s.heldByMe) s.status = outcome
+  refreshLeft(d, eventId)
+  save()
+}
+
+/** The current student accepts a waitlist offer: the reserved seats become their own 5-minute hold. */
+export function claimReserved(eventId: string, seatIds: string[]): { hold: Hold; serverTime: string } | null {
+  const d = load()
+  const seats = d.seats[eventId] ?? []
+  const reserved = seatIds.every((id) => (d.others[eventId] ?? []).some((o) => o.seatId === id))
+  if (!reserved) return null
+  d.others[eventId] = (d.others[eventId] ?? []).filter((o) => !seatIds.includes(o.seatId))
+  for (const h of d.holds.filter((h) => h.eventId === eventId)) {
+    for (const s of seats) if (h.seatIds.includes(s.id) && s.heldByMe) { s.status = 'available'; delete s.heldByMe }
+  }
+  d.holds = d.holds.filter((h) => h.eventId !== eventId)
+  const hold: MyHold = {
+    id: `HLD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+    eventId,
+    seatIds,
+    total: seatIds.reduce((t, sid) => t + (seats.find((s) => s.id === sid)?.price ?? 0), 0),
+    expiresAt: new Date(Date.now() + HOLD_MS).toISOString(),
+    userId: SEEDED_STUDENT.id,
+  }
+  for (const s of seats) if (seatIds.includes(s.id)) { s.status = 'held'; s.heldByMe = true }
+  d.holds.push(hold)
+  metric(d, eventId, 'holds')
+  save()
+  const { userId: _u, ...pub } = hold
+  return { hold: pub, serverTime: new Date().toISOString() }
+}
+
+/** Another (simulated) student cancels: one booked seat goes back into inventory. */
+export function simulateCancellation(eventId: string, count = 1): string[] {
+  const d = load()
+  const seats = d.seats[eventId] ?? []
+  const mine = new Set(d.bookings.filter((b) => b.eventId === eventId && b.status === 'confirmed').flatMap((b) => b.seats.map((s) => s.id)))
+  const booked = seats.filter((s) => s.status === 'booked' && !mine.has(s.id))
+  const out: string[] = []
+  for (let i = 0; i < count && booked.length; i++) {
+    const s = booked.splice(Math.floor(Math.random() * booked.length), 1)[0]
+    if (!s) break
+    s.status = 'available'
+    out.push(s.id)
+  }
+  metric(d, eventId, 'cancelled', out.length)
+  refreshLeft(d, eventId)
+  save()
+  return out
+}
+
+/** Organizer policy action: release no-show seats back into inventory. */
+export function releaseSeats(eventId: string, seatIds: string[], reason: 'noshow' | 'organizer'): string[] {
+  const d = load()
+  const mine = new Set(d.bookings.filter((b) => b.eventId === eventId && b.status === 'confirmed').flatMap((b) => b.seats.map((s) => s.id)))
+  const out: string[] = []
+  for (const s of d.seats[eventId] ?? []) {
+    if (!seatIds.includes(s.id) || mine.has(s.id)) continue // never release the signed-in student's own tickets
+    if (s.status === 'booked' || (s.status === 'held' && !s.heldByMe)) { s.status = 'available'; out.push(s.id) }
+  }
+  metric(d, eventId, reason === 'noshow' ? 'noShowReleased' : 'released', out.length)
+  refreshLeft(d, eventId)
+  save()
+  return out
+}
+
+/** Organizer seat-management demo: block or unblock an available seat. */
+export function setSeatBlocked(eventId: string, seatId: string, blocked: boolean): boolean {
+  const d = load()
+  const s = d.seats[eventId]?.find((x) => x.id === seatId)
+  if (!s) return false
+  if (blocked && s.status !== 'available') return false
+  if (!blocked && s.status !== 'blocked') return false
+  s.status = blocked ? 'blocked' : 'available'
+  refreshLeft(d, eventId)
+  save()
+  return true
+}
+
+/** Scenario control: a burst of other students holding seats. */
+export function simulateRush(eventId: string, n: number): number {
+  const d = load()
+  const seats = d.seats[eventId] ?? []
+  const available = seats.filter((s) => s.status === 'available')
+  let grabbed = 0
+  for (let i = 0; i < n && available.length > 4; i++) {
+    const seat = available.splice(Math.floor(Math.pow(Math.random(), 1.6) * available.length), 1)[0]
+    if (!seat) continue
+    seat.status = 'held'
+    ;(d.others[eventId] ??= []).push({ seatId: seat.id, until: Date.now() + 8_000 + Math.random() * 20_000, outcome: Math.random() < 0.6 ? 'booked' : 'available' })
+    grabbed++
+  }
+  refreshLeft(d, eventId)
+  save()
+  return grabbed
 }
