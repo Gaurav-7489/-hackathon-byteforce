@@ -1,14 +1,7 @@
 import type { Mode } from '../booking/data'
 
-/** Unsplash photography per venue type. Resized on the CDN; falls back to generated art if blocked. */
-export const PHOTO: Record<Mode, { id: string; alt: string }> = {
-  cinema: { id: '1489599849927-2ee91cede3ba', alt: 'Rows of red cinema seats facing a dark screen' },
-  bus: { id: '1544620347-c4fd4a3d5957', alt: 'An intercity coach on an open road' },
+/** Local stills cut from the venue films in public/media (no third-party image host). */
+export const PHOTO: Record<Mode, { src: string; video: string; alt: string }> = {
+  cinema: { src: '/media/cinema.jpg', video: '/media/cinema.mp4', alt: 'A guest relaxing in a red recliner in a cinema hall' },
+  bus: { src: '/media/bus.jpg', video: '/media/bus.mp4', alt: 'Choosing a coach seat in the SeatLock app' },
 }
-
-export const photoSrc = (id: string, w: number) => `https://images.unsplash.com/photo-${id}?w=${w}&q=70&auto=format&fit=crop`
-
-export const photoSet = (id: string) => ({
-  src: photoSrc(id, 1100),
-  srcSet: `${photoSrc(id, 700)} 700w, ${photoSrc(id, 1100)} 1100w, ${photoSrc(id, 1600)} 1600w`,
-})

@@ -19,12 +19,7 @@ const MODES: { id: Mode; title: string; body: string; facts: string[]; Art: type
   { id: 'bus', title: 'Bus', body: 'Window or aisle, front or back — before you pay.', facts: ['45 seats', '2+2 AC', 'Women-only rows'], Art: BusArt },
 ]
 
-/** Unsplash CDN photography; resized on the CDN, AVIF/WebP via auto=format. */
-const PHOTO: Record<Mode, { id: string; alt: string }> = {
-  cinema: { id: '1489599849927-2ee91cede3ba', alt: 'Rows of red cinema seats facing a dark screen' },
-  bus: { id: '1544620347-c4fd4a3d5957', alt: 'An intercity coach on an open road' },
-}
-const src = (id: string, w: number) => `https://images.unsplash.com/photo-${id}?w=${w}&q=70&auto=format&fit=crop`
+import { PHOTO } from '../lib/photos'
 
 const LINES: Record<Mode, [string, string]> = {
   cinema: ['Pick the seat, not just the show.', 'Your seats lock for five minutes. Nobody else can take them.'],
@@ -58,16 +53,16 @@ function Panel({ mode, step }: { mode: Mode; step: number }) {
   const line = LINES[mode][step]!
   return (
     <div className="ob-aside" aria-hidden="true">
-      <img
+      <video
         key={mode}
         className="ob-photo"
-        src={src(p.id, 1100)}
-        srcSet={`${src(p.id, 700)} 700w, ${src(p.id, 1100)} 1100w, ${src(p.id, 1600)} 1600w`}
-        sizes="(min-width: 768px) 50vw, 100vw"
-        alt=""
-        decoding="async"
-        fetchPriority="high"
-        onError={(e) => (e.currentTarget.style.display = 'none')}
+        src={p.video}
+        poster={p.src}
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
       />
       <span className="ob-shade" />
       <div className="ob-brand">

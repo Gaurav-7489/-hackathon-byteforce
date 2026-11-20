@@ -20,8 +20,12 @@
   color: #fff;
 }
 @media (min-width: 720px) {
+  .home-rows {
+    grid-template-columns: 1fr 1fr;
+  }
   .home-row {
-    aspect-ratio: 21 / 8;
+    aspect-ratio: auto;
+    height: clamp(460px, 74vh, 760px);
   }
 }
 .home-media,

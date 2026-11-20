@@ -179,8 +179,9 @@ function DemoMenu() {
 }
 
 const NAV = [
-  { to: '/', label: 'Home', key: 'nav.home', icon: 'grid' as const, end: true },
-  { to: '/bookings', label: 'My tickets', key: 'nav.tickets', icon: 'ticket' as const, end: false },
+  { to: '/', label: 'Home', hi: 'होम', icon: 'grid' as const, end: true },
+  { to: '/smart', label: 'Smart tools', hi: 'स्मार्ट टूल', icon: 'sparkle' as const, end: false },
+  { to: '/bookings', label: 'My tickets', hi: 'मेरे टिकट', icon: 'ticket' as const, end: false },
 ]
 
 export function AppLayout() {
@@ -202,7 +203,7 @@ export function AppLayout() {
           <nav aria-label="Primary" className="app-nav">
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end}>
-                {label(n.label, n.key === 'nav.home' ? 'होम' : 'मेरे टिकट')}
+                {label(n.label, n.hi)}
               </NavLink>
             ))}
           </nav>
@@ -235,7 +236,7 @@ export function AppLayout() {
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end}>
             <Icon name={n.icon} size={20} />
-            <span>{label(n.label, n.key === 'nav.home' ? 'होम' : 'मेरे टिकट')}</span>
+            <span>{label(n.label, n.hi)}</span>
           </NavLink>
         ))}
       </nav>

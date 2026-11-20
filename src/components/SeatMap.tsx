@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ViewTransition, type KeyboardEvent, type PointerEvent as RPointerEvent, type WheelEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, ViewTransition, type KeyboardEvent, type PointerEvent as RPointerEvent, type WheelEvent } from 'react'
 import type { Kind, Seat } from '../lib/api/types'
 import { money } from '../lib/format'
 import { effectiveStatus, neighbour, STATUS_LABEL, tierLabel, type Direction } from '../lib/seats'
@@ -111,6 +111,18 @@ export function SeatMap({ kind, seats, selected, suggested, lost, onToggle, focu
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only layout
   }, [])
+
+  // The pan/zoom transform is set imperatively; if the canvas renders without it (first paint,
+  // or a re-render that recreated it), restore it before paint. Otherwise it was applied
+  // mid-press and the map jumped under the pointer, losing the first tap.
+  useLayoutEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    if (!el.style.transform) {
+      if (view.current.s === 1 && view.current.x === 0 && view.current.y === 0) reset(false)
+      else apply()
+    }
+  })
 
   /** Keep the keyboard-focused seat inside the viewport. */
   const reveal = (id: string) => {
@@ -322,6 +334,12 @@ export function SeatMap({ kind, seats, selected, suggested, lost, onToggle, focu
                           aria-pressed={status === 'selected'}
                           aria-disabled={status === 'booked' || status === 'blocked' || status === 'held' ? true : undefined}
                           onFocus={() => setFocusId(seat.id)}
+                          // Focus without the browser's scroll-into-view: that scroll moved edge seats
+                          // under the pointer between press and release, so the first tap was lost.
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            e.currentTarget.focus({ preventScroll: true })
+                          }}
                           onClick={() => onSeatClick(seat)}
                         >
                           {icon ? <Icon name={icon} size={16} /> : <span className="seat-num" aria-hidden="true">{seat.number}</span>}

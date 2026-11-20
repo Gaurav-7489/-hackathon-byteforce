@@ -29,7 +29,8 @@ import type { Booking, EventDetail, EventSummary, Kind, Seat, SeatsResponse } fr
 import { useDemo } from '../lib/demo'
 import { summaryCache } from '../lib/eventCache'
 import { dateLong, money, rupees, time } from '../lib/format'
-import { useT } from '../lib/i18n'
+import { useLang, useT } from '../lib/i18n'
+import { canSpeak, speak } from '../lib/speech'
 import { setMode as applyEventMode } from '../lib/mode'
 import { sfx } from '../lib/sound'
 import { useHold } from '../lib/hold'
@@ -108,6 +109,28 @@ function aiSummary(e: EventDetail): string {
   return `${demand}: ${e.seatsLeft} of ${e.totalSeats} seats left. ${e.tags[0] === 'IMAX laser' ? 'For IMAX, rows H–K centre fill your view.' : 'Rows F–K centre have the best sightline.'} Recliners sit at the back.`
 }
 
+function aiSummaryHi(e: EventDetail): string {
+  const pct = 1 - e.seatsLeft / e.totalSeats
+  const demand = pct > 0.75 ? 'तेज़ी से बिक रहा है' : pct > 0.45 ? 'माँग ठीक-ठाक है' : 'काफ़ी सीटें खाली हैं'
+  if (e.kind === 'bus') return `${demand}: ${e.totalSeats} में से ${e.seatsLeft} सीटें बची हैं। बाईं खिड़की पर सुबह की धूप आती है; पंक्ति 2–3 महिलाओं के लिए आरक्षित है।`
+  return `${demand}: ${e.totalSeats} में से ${e.seatsLeft} सीटें बची हैं। बीच की पंक्तियाँ (F–K) से सबसे अच्छा दिखता है। रिक्लाइनर सबसे पीछे हैं।`
+}
+
+function SummaryText({ detail }: { detail: EventDetail }) {
+  const lang = useLang()
+  const text = lang === 'hi' ? aiSummaryHi(detail) : aiSummary(detail)
+  return (
+    <>
+      {text}
+      {canSpeak() && (
+        <button type="button" className="ep-listen" onClick={() => speak(text, lang)} aria-label={lang === 'hi' ? 'सारांश सुनें' : 'Listen to the summary'}>
+          <Icon name="volume" size={15} /> {lang === 'hi' ? 'सुनें' : 'Listen'}
+        </button>
+      )}
+    </>
+  )
+}
+
 function EventHero({ event }: { event: EventSummary | EventDetail }) {
   const detail = 'description' in event ? event : null
   return (
@@ -164,7 +187,7 @@ function EventHero({ event }: { event: EventSummary | EventDetail }) {
               <span className="badge badge-ai">
                 <Icon name="sparkle" size={12} /> AI summary
               </span>
-              {aiSummary(detail)}
+              <SummaryText detail={detail} />
             </p>
           </>
         )}
@@ -581,16 +604,6 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
       </p>
 
       <div className="ep-main">
-        {clash && (
-          <div className="alert" data-tone="warning" role="status">
-            <Icon name="clock" size={18} />
-            <div>
-              <strong>Time clash</strong>
-              You also have “{clash}” around this time.
-            </div>
-          </div>
-        )}
-
         {expiredNotice && (
           <div className="alert" data-tone="warning" role="alert">
             <Icon name="clock" size={18} />
@@ -720,6 +733,16 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
       </div>
 
       <aside className="ep-side" aria-label="Your selection">
+        {/* Lives in the side column so it never shifts the seat map when it loads. */}
+        {clash && (
+          <div className="alert" data-tone="warning" role="status">
+            <Icon name="clock" size={18} />
+            <div>
+              <strong>Time clash</strong>
+              You also have “{clash}” around this time.
+            </div>
+          </div>
+        )}
         <section className="ep-summary lk-card" aria-labelledby="summary-title">
           <div className="ep-summary-head">
             <h2 id="summary-title">{t('ev.yourSeats')}</h2>
@@ -785,6 +808,9 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                 <li key={f}>{f}</li>
               ))}
             </ul>
+            <p className="ep-smart-links">
+              <Link to="/smart?f=buddy">Book with friends</Link> · <Link to="/smart?f=access">Accessible seats</Link> · <Link to="/smart?f=exit">Nearest exit</Link> · <Link to="/smart">All 20 tools</Link>
+            </p>
           </div>
           {isDesktop && holdForm}
         </section>

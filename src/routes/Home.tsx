@@ -4,6 +4,7 @@ import { Icon } from '../components/Icon'
 import { VenuePhoto } from '../components/Photo'
 import type { Mode } from '../booking/data'
 import { setMode } from '../lib/mode'
+import { PHOTO } from '../lib/photos'
 import { useT, type TKey } from '../lib/i18n'
 import { sfx, useSoundOn } from '../lib/sound'
 import './home.css'
@@ -60,13 +61,13 @@ function VideoRow({ kind, title, body, cta }: { kind: Mode; title: string; body:
   return (
     <section className="home-row" data-kind={kind} aria-labelledby={`row-${kind}`}>
       <div className="home-media">
-        <VenuePhoto kind={kind} className="home-photo" sizes="100vw" />
+        <VenuePhoto kind={kind} className="home-photo" />
         {!broken && (
           <video
             ref={ref}
             className="home-video"
-            src={`/media/${kind}.mp4`}
-            poster={undefined}
+            src={PHOTO[kind].video}
+            poster={PHOTO[kind].src}
             autoPlay
             muted
             loop

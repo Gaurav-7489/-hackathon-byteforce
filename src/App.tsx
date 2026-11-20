@@ -61,6 +61,7 @@ const router = createBrowserRouter([
           { index: true, lazy: async () => ({ Component: (await import('./routes/Home')).Home }) },
           { path: '/explore', element: <Navigate to="/" replace /> },
           { path: '/book/:kind', lazy: async () => ({ Component: (await import('./routes/Browse')).Browse }) },
+          { path: '/smart', lazy: async () => ({ Component: (await import('./routes/Smart')).Smart }) },
           { path: '/e/:id', lazy: async () => ({ Component: (await import('./routes/EventPage')).EventPage }) },
           { path: '/checkout', lazy: async () => ({ Component: (await import('./routes/Checkout')).Checkout }) },
           { path: '/success', lazy: async () => ({ Component: (await import('./routes/Success')).Success }) },

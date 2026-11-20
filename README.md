@@ -86,9 +86,17 @@ Not done: **Next.js Server Components** (this is a Vite SPA; it would need a fra
 
 White base everywhere. The venue sets the accent: **bus = white + yellow**, **cinema = white + cherry red** (`[data-mode]` on `<html>`, see `src/styles/tokens.css`). A dark theme is still available from the header. Venue photos are used on home, cards and headers, with generated art as the fallback when an image cannot load.
 
-### Videos
+### Videos and photos
 
-The home rows load `public/media/bus.mp4` and `public/media/cinema.mp4`. Drop your films there with those exact names. If a file is missing, the venue photo stays.
+The home rows play `public/media/bus.mp4` and `public/media/cinema.mp4` side by side (muted until you tap *Sound*). Stills cut from them (`bus.jpg`, `cinema.jpg`) are the venue photos used on cards, headers and sign-in, so no image is loaded from a third-party host.
+
+### Smart tools (all 20 features)
+
+`/smart` lists the 20 features (`src/features/catalog.ts`, English + Hindi). Each card opens a working tool (`src/features/tools.tsx`) built on the real events, seats and bookings: buddy seating, FairQueue, accessibility matching, AutoRescue, navigation, verified exchange, predictive waitlist, budget planner, QuietZone, SafeExit, conflict detector, group split, AI matchmaker, SeatView preview, no-show recovery, crowd heatmap, offline vault, opportunity pass, companion requests and the digital-twin view. Where a feature needs organizer systems (queue tokens, gate counts, check-ins, certificates) the tool simulates that data in the browser and says so. Deep link: `/smart?f=buddy`.
+
+### Voice and Hindi
+
+Built on the browser's Web Speech APIs (no key, nothing sent to a third party by this code): the assistant can read replies aloud (speaker button), listens in `hi-IN` when Hindi is on, and Hindi requests such as “दो सस्ती सीटें साथ में” are normalised before they reach `/ai/assist` (`src/lib/speech.ts`). Replies, chips and the event AI summary (with a *Listen* button) switch to Hindi with the header toggle. To use a real LLM, point `VITE_API_BASE_URL` at a backend that serves `/ai/assist`; keys must stay on that server.
 
 ### Live demo
 
