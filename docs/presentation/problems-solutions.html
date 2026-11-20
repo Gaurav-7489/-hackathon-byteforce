@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>SeatLock — Problems and Solutions</title>
+<style>
+  @page { size: A4; margin: 14mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111613; font-size: 10.5pt; line-height: 1.42; margin: 0; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .top { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #111613; padding-bottom: 8px; margin-bottom: 12px; }
+  h1 { font-size: 30pt; margin: 0; letter-spacing: -0.5px; }
+  h1 span { color: #A4122A; }
+  .meta { text-align: right; font-size: 9pt; color: #5E6660; }
+  .meta b { color: #111613; }
+  .tag { font-size: 12.5pt; margin: 2px 0 0; color: #5E6660; }
+  h2 { font-size: 12pt; color: #A4122A; letter-spacing: 1.5px; text-transform: uppercase; margin: 10px 0 5px; }
+  p { margin: 0 0 6px; }
+  .aim { background: #F3F4F1; border-radius: 8px; padding: 10px 12px; }
+  .aim ul { margin: 4px 0 0; padding-left: 18px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { border: 1px solid #DADDD6; border-radius: 8px; padding: 9px 11px; }
+  .card h3 { margin: 0 0 3px; font-size: 10.5pt; }
+  .card p { margin: 0; font-size: 9.5pt; color: #3b433e; }
+  .prob h3 { color: #A4122A; }
+  .sol h3 { color: #1F9A5B; }
+  .shot { display: flex; gap: 10px; margin-top: 10px; }
+  .shot img { width: 50%; border-radius: 6px; border: 1px solid #DADDD6; object-fit: cover; height: 150px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+  th { text-align: left; background: #111613; color: #fff; padding: 6px 8px; }
+  td { padding: 6px 8px; border-bottom: 1px solid #DADDD6; vertical-align: top; }
+  td:first-child { font-weight: bold; width: 26%; }
+  .st { font-size: 8.5pt; font-weight: bold; padding: 1px 6px; border-radius: 9px; white-space: nowrap; }
+  .ok { background: #DDF1E5; color: #14683d; }
+  .sim { background: #FBE4DB; color: #9a3a1c; }
+  .note { font-size: 9pt; color: #5E6660; margin-top: 8px; }
+  .foot { margin-top: 10px; font-size: 8.5pt; color: #5E6660; border-top: 1px solid #DADDD6; padding-top: 6px; }
+</style></head>
+<body>
+
+<section class="page">
+  <div class="top">
+    <div>
+      <h1>SEAT<span>LOCK</span></h1>
+      <p class="tag">Smarter booking. Real-time seats. A better experience.</p>
+    </div>
+    <div class="meta"><b>Team ByteForce · FE013</b><br>Gaurav Bhardwaj · Ankit Kumar<br>Problems &amp; Solutions brief</div>
+  </div>
+
+  <h2>Introduction</h2>
+  <p>SeatLock is a web app for booking <b>cinema</b> and <b>bus</b> seats. Users see the hall or coach live in 3D or on an accessible 2D seat map, pick up to four seats, lock them for five minutes, and get a ticket. An AI seat assistant suggests seats but never books on its own. It is built with React 19, TypeScript, Vite and Three.js.</p>
+
+  <h2>Aim</h2>
+  <div class="aim">
+    <p>To make seat booking <b>fair, clear and recoverable</b>, so that a user always:</p>
+    <ul>
+      <li>knows exactly where they will sit before paying,</li>
+      <li>is protected while finishing the booking (seats are locked to them),</li>
+      <li>is told immediately when something changes, and is offered a way forward,</li>
+      <li>can book whatever their device, network speed or accessibility needs.</li>
+    </ul>
+  </div>
+
+  <h2>Problems we found</h2>
+  <div class="grid">
+    <div class="card prob"><h3>1. Same seat, same second</h3><p>Popular seats are taken by several people at once; someone loses after doing all the work.</p></div>
+    <div class="card prob"><h3>2. Failed bookings mean starting over</h3><p>A conflict or error throws the user back to the start with less time and fewer seats.</p></div>
+    <div class="card prob"><h3>3. Unclear seat location</h3><p>A plain grid doesn't show the view, aisle, window or distance from the screen.</p></div>
+    <div class="card prob"><h3>4. Slow and unreliable networks</h3><p>Delays and dropped requests leave users unsure whether the booking went through.</p></div>
+    <div class="card prob"><h3>5. Accessibility barriers</h3><p>Hard to find wheelchair spaces or companion seats, or to book by keyboard or voice.</p></div>
+    <div class="card prob"><h3>6. Time pressure and groups</h3><p>Users race the clock, and friends booking together get split up.</p></div>
+  </div>
+
+  <h2>Solutions we are giving</h2>
+  <div class="grid">
+    <div class="card sol"><h3>5-minute seat hold</h3><p>Held seats are locked to the user with a visible countdown; expired holds release seats cleanly.</p></div>
+    <div class="card sol"><h3>Conflict recovery (AutoRescue)</h3><p>If a seat is taken first, other seats are kept and the nearest similar seat is offered in one tap.</p></div>
+    <div class="card sol"><h3>3D + 2D seat views</h3><p>Live 3D hall and coach, a "view from seat" camera, and five clear seat states (colour + icon).</p></div>
+    <div class="card sol"><h3>Live, honest feedback</h3><p>Availability refreshes every 2.5 s; lost seats are flagged at once; failures get a clear message instead of silence.</p></div>
+    <div class="card sol"><h3>Accessible by design</h3><p>Keyboard seat grid, screen-reader announcements, 44 px touch targets, voice in English and Hindi.</p></div>
+    <div class="card sol"><h3>Fair and group-friendly</h3><p>Max 4 seats per booking, buddy seating for groups, and an AI assistant that suggests but never books.</p></div>
+  </div>
+
+  <div class="foot">Prototype: bookings run on a simulated organizer API with realistic delays and failures; payment is a demo confirmation. Repo: github.com/Gaurav-7489/-hackathon-byteforce</div>
+</section>
+
+<section class="page">
+  <div class="top">
+    <div><h1 style="font-size:20pt">Problem → Solution in SeatLock</h1></div>
+    <div class="meta"><b>ByteForce · FE013</b></div>
+  </div>
+
+  <table>
+    <tr><th>Problem</th><th>How SeatLock solves it</th><th>Status</th></tr>
+    <tr><td>Two people pick the same seat</td><td>Seats are held for 5 minutes per user; a clash returns a clear conflict and the other seats are kept.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Losing the seat after a conflict</td><td>"Swap in" offers the nearest comparable seat by price and position.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Not knowing where you will sit</td><td>3D cinema hall and bus coach, Overview / Top / From-seat cameras, 2D map with row and seat labels.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Seats changing while you choose</td><td>Live polling every 2.5 s, pauses in hidden tabs, re-checks each tap; taken seats are removed with a notice.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Slow or failing network</td><td>Typed API client validates every response; the demo reproduces 2–3 s delays and ~1 in 20 failures to prove recovery.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Running out of time</td><td>Countdown ring warns at 1 minute and returns to the map on expiry, re-selecting seats that are still free.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Choosing well is hard</td><td>AI seat assistant (English, Hindi, Hinglish) suggests seats by budget and view; the user decides.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Accessibility needs</td><td>Accessible-seat matching (wheelchair, companion, step-free, low stimulation), keyboard and voice use.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Groups get split up</td><td>Buddy seating finds adjacent seats within everyone's budget; split-the-bill tracker.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>No internet at the entrance</td><td>Offline ticket vault saves tickets on the phone; PWA offline page.</td><td><span class="st ok">Working</span></td></tr>
+    <tr><td>Unfair rush for popular shows</td><td>FairQueue: virtual queue with per-student limits.</td><td><span class="st sim">Simulated</span></td></tr>
+    <tr><td>Sold-out shows</td><td>Predictive waitlist with an expiring offer when seats free up.</td><td><span class="st sim">Simulated</span></td></tr>
+    <tr><td>Organizers can't see demand</td><td>Digital twin and gate-crowd view for organizers.</td><td><span class="st sim">Simulated</span></td></tr>
+  </table>
+  <p class="note"><b>Working</b> = runs in the app today. <b>Simulated</b> = runs on demo data generated in the browser, because it needs organizer systems (queue tokens, check-in counts).</p>
+
+  <h2>What comes next</h2>
+  <div class="grid">
+    <div class="card"><h3>Server-side seat locking</h3><p>An authoritative backend so holds are guaranteed across all users.</p></div>
+    <div class="card"><h3>Real payments</h3><p>Connect a payment gateway in place of the demo confirmation.</p></div>
+    <div class="card"><h3>Organizer integrations</h3><p>Real queue tokens, gate counts and check-in data.</p></div>
+    <div class="card"><h3>Accounts and scale testing</h3><p>Authenticated users and production-scale concurrency tests.</p></div>
+  </div>
+
+  <div class="foot">SEATLOCK — Every seat matters. Every second counts. · github.com/Gaurav-7489/-hackathon-byteforce</div>
+</section>
+</body></html>
