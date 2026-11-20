@@ -10,6 +10,7 @@ import type { Booking } from '../lib/api/types'
 import { dateLong, dayParts, downloadIcs, money, time } from '../lib/format'
 import { invalidate, resource } from '../lib/resource'
 import { toast } from '../lib/toast'
+import { ToolStrip } from '../components/ToolStrip'
 import './bookings.css'
 
 export function Bookings() {
@@ -32,6 +33,7 @@ export function Bookings() {
           <Wallet promise={resource('bookings', api.bookings)} />
         </Suspense>
       </ErrorBoundary>
+      <ToolStrip ids={['vault', 'exchange', 'split', 'nav', 'exit', 'conflict', 'pass', 'companion']} title="Tools for your tickets" hiTitle="आपके टिकट के टूल" />
     </div>
   )
 }

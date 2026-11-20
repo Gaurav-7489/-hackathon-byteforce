@@ -87,3 +87,8 @@ export function normalizeHindi(text: string): string {
   for (const [re, en] of HI_WORDS) out = out.replace(re, ` ${en} `)
   return out.replace(/\s+/g, ' ').trim()
 }
+
+/** Voice guide: speaks only when the user turned voice on in the header. */
+export function narrate(text: string, lang: Lang) {
+  if (readAloudOn()) speak(text, lang)
+}

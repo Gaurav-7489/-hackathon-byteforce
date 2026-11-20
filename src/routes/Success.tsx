@@ -5,7 +5,8 @@ import { StatePanel } from '../components/StatePanel'
 import { Ticket } from '../components/Ticket'
 import { downloadIcs, rupees } from '../lib/format'
 import { useHold } from '../lib/hold'
-import { useT } from '../lib/i18n'
+import { readLang, useT } from '../lib/i18n'
+import { narrate } from '../lib/speech'
 import { sfx } from '../lib/sound'
 import { toast } from '../lib/toast'
 import './success.css'
@@ -13,7 +14,16 @@ import './success.css'
 export function Success() {
   const { lastBooking } = useHold()
   useEffect(() => {
-    if (lastBooking) sfx.chime()
+    if (lastBooking) {
+      sfx.chime()
+      const ids = lastBooking.seats.map((x) => x.id).join(', ')
+      narrate(
+        readLang() === 'hi'
+          ? `बुकिंग पक्की। ${lastBooking.event.title}, सीटें ${ids}। आपका टिकट तैयार है।`
+          : `Booking confirmed. ${lastBooking.event.title}, seats ${ids}. Your ticket is ready.`,
+        readLang(),
+      )
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastBooking?.id])
   if (!lastBooking) {

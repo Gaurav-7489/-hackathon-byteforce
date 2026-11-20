@@ -30,7 +30,9 @@ import { useDemo } from '../lib/demo'
 import { summaryCache } from '../lib/eventCache'
 import { dateLong, money, rupees, time } from '../lib/format'
 import { useLang, useT } from '../lib/i18n'
-import { canSpeak, speak } from '../lib/speech'
+import { canSpeak, narrate, speak } from '../lib/speech'
+import { readLang } from '../lib/i18n'
+import { ToolStrip } from '../components/ToolStrip'
 import { setMode as applyEventMode } from '../lib/mode'
 import { sfx } from '../lib/sound'
 import { useHold } from '../lib/hold'
@@ -449,6 +451,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
     setFocusSeat(seat.id)
     if (optimisticSelected.includes(seat.id)) {
       sfx.deselect()
+      narrate(readLang() === 'hi' ? `सीट ${seat.id} हटाई गई।` : `Seat ${seat.id} removed.`, readLang())
       setSelected((cur) => cur.filter((x) => x !== seat.id))
       setAnnounce(`${seat.id} removed. ${optimisticSelected.length - 1} of ${MAX_SEATS} seats selected.`)
       return
@@ -468,6 +471,12 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
       return
     }
     sfx.select()
+    narrate(
+      readLang() === 'hi'
+        ? `सीट ${seat.id} चुनी गई, ${seat.price} रुपये। कुल ${total + seat.price} रुपये।`
+        : `Seat ${seat.id} selected, ${seat.price} rupees. Total ${total + seat.price} rupees.`,
+      readLang(),
+    )
     setAnnounce(`${seat.id} selected, ${money(seat.price)}. ${optimisticSelected.length + 1} of ${MAX_SEATS} seats selected.`)
     // Select at once so rapid taps all register; the live re-check below can still take it back.
     setSelected((cur) => (cur.length >= MAX_SEATS ? cur : reduceSelection(cur, { type: 'add', id: seat.id })))
@@ -524,6 +533,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         setActive({ hold, event, seats: ids.map((sid) => seats.find((s) => s.id === sid)).filter((s): s is Seat => Boolean(s)) })
         setConflict(null)
         toast.success('Seats held for 5 minutes', `${ids.join(', ')} are yours until the timer runs out.`)
+        narrate(readLang() === 'hi' ? `${ids.join(', ')} पाँच मिनट के लिए आपकी हैं।` : `${ids.join(', ')} are held for you for five minutes.`, readLang())
         await navigate('/checkout')
         return { error: null }
       } catch (e) {
@@ -730,6 +740,8 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
           </div>
         </section>
 
+        <ToolStrip title="Smart tools for this booking" hiTitle="इस बुकिंग के स्मार्ट टूल" />
+
       </div>
 
       <aside className="ep-side" aria-label="Your selection">
@@ -808,9 +820,6 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                 <li key={f}>{f}</li>
               ))}
             </ul>
-            <p className="ep-smart-links">
-              <Link to="/smart?f=buddy">Book with friends</Link> · <Link to="/smart?f=access">Accessible seats</Link> · <Link to="/smart?f=exit">Nearest exit</Link> · <Link to="/smart">All 20 tools</Link>
-            </p>
           </div>
           {isDesktop && holdForm}
         </section>

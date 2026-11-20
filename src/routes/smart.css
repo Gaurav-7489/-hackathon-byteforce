@@ -124,6 +124,7 @@
   color: inherit;
 }
 .smart-hero {
+  background: #111613;
   position: relative;
   height: clamp(150px, 26vh, 220px);
   overflow: hidden;

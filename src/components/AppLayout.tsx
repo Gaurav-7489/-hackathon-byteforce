@@ -1,9 +1,10 @@
 import { useRef, useState, useEffect } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../lib/auth'
 import { useDemo } from '../lib/demo'
 import { useBackendLog } from '../lib/backendLog'
-import { setLang, useLang } from '../lib/i18n'
+import { readLang, setLang, useLang } from '../lib/i18n'
+import { narrate, setReadAloud, speak, useReadAloud } from '../lib/speech'
 import { setSound, sfx, useSoundOn } from '../lib/sound'
 import { useTheme } from '../lib/theme'
 import { toast } from '../lib/toast'
@@ -29,6 +30,46 @@ export function LangToggle() {
     </button>
   )
 }
+
+/** Voice guide: the app talks you through each screen and every booking step. */
+export function VoiceToggle() {
+  const on = useReadAloud()
+  const lang = useLang()
+  return (
+    <button
+      type="button"
+      className="voice-toggle"
+      data-on={on || undefined}
+      aria-pressed={on}
+      aria-label={on ? 'Turn voice guide off' : 'Turn voice guide on'}
+      title="Voice guide"
+      onClick={() => {
+        setReadAloud(!on)
+        if (!on) speak(lang === 'hi' ? 'वॉइस गाइड चालू है। मैं हर कदम पर आपको बताऊँगा।' : 'Voice guide is on. I will talk you through every step.', lang)
+      }}
+    >
+      <Icon name="mic" size={17} />
+      <span>{lang === 'hi' ? 'आवाज़' : 'Voice'}</span>
+    </button>
+  )
+}
+
+const SCREEN_EN: [RegExp, string][] = [
+  [/^\/$/, 'Home. Choose bus or cinema.'],
+  [/^\/book\/bus/, 'Bus trips. Pick a trip to choose your seat.'],
+  [/^\/book\/cinema/, 'Cinema shows. Pick a show to choose your seat.'],
+  [/^\/e\//, 'Seat booking. Tap a seat, or ask the seat assistant. Smart tools are below the map.'],
+  [/^\/checkout/, 'Checkout. Your seats are locked for five minutes. Confirm to pay.'],
+  [/^\/bookings/, 'My tickets.'],
+]
+const SCREEN_HI: [RegExp, string][] = [
+  [/^\/$/, 'होम। बस या सिनेमा चुनें।'],
+  [/^\/book\/bus/, 'बस यात्राएँ। सीट चुनने के लिए यात्रा चुनें।'],
+  [/^\/book\/cinema/, 'सिनेमा शो। सीट चुनने के लिए शो चुनें।'],
+  [/^\/e\//, 'सीट बुकिंग। सीट पर टैप करें या सीट सहायक से पूछें। स्मार्ट टूल मैप के नीचे हैं।'],
+  [/^\/checkout/, 'चेकआउट। आपकी सीटें पाँच मिनट के लिए रुकी हैं। भुगतान के लिए पुष्टि करें।'],
+  [/^\/bookings/, 'मेरे टिकट।'],
+]
 
 export function SoundToggle() {
   const on = useSoundOn()
@@ -180,7 +221,6 @@ function DemoMenu() {
 
 const NAV = [
   { to: '/', label: 'Home', hi: 'होम', icon: 'grid' as const, end: true },
-  { to: '/smart', label: 'Smart tools', hi: 'स्मार्ट टूल', icon: 'sparkle' as const, end: false },
   { to: '/bookings', label: 'My tickets', hi: 'मेरे टिकट', icon: 'ticket' as const, end: false },
 ]
 
@@ -189,6 +229,13 @@ export function AppLayout() {
   const navigate = useNavigate()
   const lang = useLang()
   const hi = lang === 'hi'
+  const { pathname } = useLocation()
+  // Voice guide: announce each screen when it opens.
+  useEffect(() => {
+    const l = readLang()
+    const hit = (l === 'hi' ? SCREEN_HI : SCREEN_EN).find(([re]) => re.test(pathname))
+    if (hit) narrate(hit[1], l)
+  }, [pathname])
   const label = (en: string, h: string) => (hi ? h : en)
   return (
     <>
@@ -209,6 +256,7 @@ export function AppLayout() {
           </nav>
           <div className="app-actions">
             <DemoMenu />
+            <VoiceToggle />
             <SoundToggle />
             <LangToggle />
             <ThemeToggle />

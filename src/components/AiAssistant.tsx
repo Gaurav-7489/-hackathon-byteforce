@@ -143,6 +143,8 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
   const [history, setHistory] = useState<{ prompt: string; seatIds: string[] }[]>([])
   const [listening, setListening] = useState(false)
   const seq = useRef(0)
+  const spokenRef = useRef(false)
+  const heardRef = useRef('')
   const abortRef = useRef<{ ctrl: AbortController; timedOut: boolean } | null>(null)
   const recRef = useRef<SpeechRecognitionLike | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -164,7 +166,8 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
 
   const push = (m: Omit<Msg, 'id'>) => {
     setMsgs((cur) => [...cur, { ...m, id: ++seq.current }])
-    if (m.from === 'ai' && readAloud) speak(m.text, lang)
+    // Voice mode: speak replies when read-aloud is on, or when the question was spoken.
+    if (m.from === 'ai' && (readAloud || spokenRef.current)) speak(m.text, lang)
   }
 
   const ask = async (text: string) => {
@@ -219,6 +222,7 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
+    spokenRef.current = false
     void ask(prompt)
   }
 
@@ -233,11 +237,20 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
     rec.lang = listenLang(lang) // hi-IN when the UI is in Hindi; en-IN handles Hinglish
     rec.interimResults = true
     rec.onresult = (e) => {
-      setPrompt(Array.from({ length: e.results.length }, (_, i) => e.results[i]?.[0]?.transcript ?? '').join(' '))
+      const text = Array.from({ length: e.results.length }, (_, i) => e.results[i]?.[0]?.transcript ?? '').join(' ')
+      heardRef.current = text
+      setPrompt(text)
     }
     rec.onend = () => {
       setListening(false)
       inputRef.current?.focus()
+      // Voice mode: send what was heard and answer out loud.
+      const heard = heardRef.current.trim()
+      heardRef.current = ''
+      if (heard) {
+        spokenRef.current = true
+        void ask(heard)
+      }
     }
     rec.onerror = () => setListening(false)
     recRef.current = rec

@@ -445,3 +445,107 @@
   height: 100%;
   object-fit: cover;
 }
+
+/* Voice guide toggle */
+.voice-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--lk-line-strong);
+  background: var(--lk-surface);
+  color: var(--lk-ink);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.voice-toggle[data-on] {
+  background: var(--lk-signal);
+  border-color: var(--lk-signal);
+  color: var(--lk-on-signal);
+}
+@media (max-width: 720px) {
+  .voice-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .voice-toggle {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+  /* Demo panel: a full-width sheet under the header instead of running off-screen */
+  .app-top .demo .demo-panel {
+    position: fixed;
+    top: 64px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Smart tools inside the booking flow */
+.tool-strip {
+  margin-top: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.tool-strip-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-lg);
+}
+.tool-strip-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  gap: 8px;
+}
+.tool-chip {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px 6px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--lk-line);
+  background: var(--lk-surface);
+  color: var(--lk-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), transform var(--dur-fast);
+}
+.tool-chip:hover {
+  border-color: var(--lk-ink);
+  transform: translateY(-1px);
+}
+.tool-chip img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.tool-chip strong {
+  font-size: var(--text-sm);
+  line-height: 1.2;
+}
+
+/* Narrow phones: the Live demo pill already opens the panel, so drop the extra settings icon. */
+@media (max-width: 400px) {
+  .demo > .lk-icon-btn {
+    display: none;
+  }
+}

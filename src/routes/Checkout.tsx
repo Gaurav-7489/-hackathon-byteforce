@@ -13,6 +13,8 @@ import { useHold } from '../lib/hold'
 import { invalidate } from '../lib/resource'
 import { tierLabel } from '../lib/seats'
 import { toast } from '../lib/toast'
+import { readLang } from '../lib/i18n'
+import { narrate } from '../lib/speech'
 import './checkout.css'
 
 const HOLD_MS = 5 * 60_000
@@ -30,6 +32,7 @@ export function Checkout() {
     if (warning && !warned.current) {
       warned.current = true
       toast.warning('1 minute left on your hold', 'Confirm now to keep these seats.')
+      narrate(readLang() === 'hi' ? 'एक मिनट बचा है। सीटें रखने के लिए अभी पुष्टि करें।' : 'One minute left. Confirm now to keep your seats.', readLang())
     }
   }, [warning])
 
