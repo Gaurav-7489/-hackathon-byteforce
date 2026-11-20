@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { demoControls, resetMockDb, stealSeat } from '../lib/api/mock/server'
 import { demoBridge } from '../lib/demoBridge'
+import { resetCampus } from '../lib/campus/store'
 import { spring } from '../lib/motion'
 import { Icon } from './Icon'
 
@@ -47,7 +48,7 @@ export function DemoControls() {
               <input type="checkbox" checked={ctl.failures} onChange={(e) => set('failures', e.currentTarget.checked, e.currentTarget.checked ? 'Random failures on (1 in 20)' : 'Random failures off')} />
               Random failures (1 in 20)
             </label>
-            <button type="button" className="btn btn-ghost btn-block" onClick={() => { resetMockDb(); location.reload() }}>Reset demo data</button>
+            <button type="button" className="btn btn-ghost btn-block" onClick={() => { resetMockDb(); resetCampus(); location.reload() }}>Reset demo data</button>
           </motion.div>
         )}
       </AnimatePresence>

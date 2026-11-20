@@ -136,7 +136,7 @@ export function Login() {
 
         {usingMock && (
           <motion.p variants={fadeUp} className="login-hint">
-            Demo account: student@seatlock.dev, password seatlock123
+            Demo student: student@seatlock.dev / seatlock123 · Demo organizer: organizer@seatlock.dev / organizer123
           </motion.p>
         )}
       </motion.div>

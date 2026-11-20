@@ -1,4 +1,4 @@
-import { Suspense, use, useOptimistic, useState, useTransition } from 'react'
+import { Suspense, use, useEffect, useOptimistic, useState, useTransition } from 'react'
 import { Link } from 'react-router'
 import * as Tabs from '@radix-ui/react-tabs'
 import { AnimatePresence, motion } from 'motion/react'
@@ -8,6 +8,10 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Icon } from '../components/Icon'
 import { StatePanel } from '../components/StatePanel'
 import { api } from '../lib/api/client'
+import { returnPolicy } from '../lib/campus/algorithms/planning'
+import { returnBooking, saveToVault } from '../lib/campus/engine'
+import { useCampus } from '../lib/campus/store'
+import { SplitDialog } from '../features/expense-split/SplitDialog'
 import { friendlyMessage } from '../lib/api/errors'
 import type { Booking } from '../lib/api/types'
 import { dateLong, dayParts, downloadIcs, money, time } from '../lib/format'
@@ -51,6 +55,13 @@ function Wallet({ promise }: { promise: Promise<Booking[]> }) {
   const [, startTransition] = useTransition()
   const [tab, setTab] = useState('upcoming')
   const [target, setTarget] = useState<Booking | null>(null)
+  const [splitFor, setSplitFor] = useState<Booking | null>(null)
+  const exchange = useCampus((s) => s.exchange)
+
+  // Keep the offline vault in sync with upcoming confirmed tickets.
+  useEffect(() => {
+    bookings.filter((b) => b.status === 'confirmed' && Date.parse(b.event.startsAt) > Date.now()).forEach(saveToVault)
+  }, [bookings])
 
   const now = Date.now()
   const upcoming = optimistic.filter((b) => b.status === 'confirmed' && Date.parse(b.event.startsAt) > now)
@@ -61,10 +72,13 @@ function Wallet({ promise }: { promise: Promise<Booking[]> }) {
     startTransition(async () => {
       markCancelled(b.id)
       try {
-        const updated = await api.cancelBooking(b.id)
+        // Verified exchange: policy check → return → route seats to the waitlist first.
+        const res = await returnBooking(b)
+        if (!res.ok || !res.updated) { toast.error('Can’t return this ticket', { description: res.message }); return }
+        const updated = res.updated
         startTransition(() => setBookings((cur) => cur.map((x) => (x.id === updated.id ? updated : x))))
         invalidate('events')
-        toast.success('Booking cancelled', { description: `Seats ${b.seats.map((s) => s.id).join(', ')} for ${b.event.title} are available to other students again.` })
+        toast.success('Ticket returned', { description: `Seats ${b.seats.map((s) => s.id).join(', ')}: ${res.message}` })
       } catch (e) {
         toast.error('Couldn’t cancel booking', { description: `${friendlyMessage(e)} Your ticket is still valid.` })
       }
@@ -88,7 +102,7 @@ function Wallet({ promise }: { promise: Promise<Booking[]> }) {
           </StatePanel>
         ) : (
           <AnimatePresence initial={false} mode="popLayout">
-            {upcoming.map((b) => <WalletCard key={b.id} booking={b} onCancel={() => setTarget(b)} />)}
+            {upcoming.map((b) => <WalletCard key={b.id} booking={b} onCancel={() => setTarget(b)} onSplit={() => setSplitFor(b)} />)}
           </AnimatePresence>
         )}
       </Tabs.Content>
@@ -105,17 +119,52 @@ function Wallet({ promise }: { promise: Promise<Booking[]> }) {
       <ConfirmDialog
         open={target !== null}
         onOpenChange={(o) => { if (!o) setTarget(null) }}
-        title="Cancel this booking?"
-        description={target ? `Your ${target.seats.length} seat${target.seats.length > 1 ? 's' : ''} (${target.seats.map((s) => s.id).join(', ')}) for ${target.event.title} will be released to other students. This can’t be undone.` : ''}
-        confirmLabel="Cancel booking"
+        title="Return this ticket?"
+        description={target ? `Your ${target.seats.length} seat${target.seats.length > 1 ? 's' : ''} (${target.seats.map((s) => s.id).join(', ')}) for ${target.event.title} go to the next verified student on the waitlist, or back on sale. This can’t be undone.` : ''}
+        confirmLabel="Return ticket"
         cancelLabel="Keep tickets"
         onConfirm={() => { if (target) cancel(target) }}
-      />
+      >
+        {target && <ReturnPolicyNote booking={target} />}
+      </ConfirmDialog>
+      {splitFor && <SplitDialog booking={splitFor} open onOpenChange={(o) => { if (!o) setSplitFor(null) }} />}
+      {exchange.length > 0 && <ExchangeHistory />}
     </Tabs.Root>
   )
 }
 
-function WalletCard({ booking: b, onCancel }: { booking: Booking; onCancel?: () => void }) {
+function ReturnPolicyNote({ booking }: { booking: Booking }) {
+  const p = returnPolicy(booking.event.startsAt)
+  return (
+    <div className="alert" data-tone={p.eligible ? 'info' : 'warning'} style={{ marginTop: 'var(--space-4)' }}>
+      <Icon name="info" size={18} />
+      <div>
+        <strong>{p.eligible ? `${p.refundPercent}% demo credit: ${money(Math.round((booking.total * p.refundPercent) / 100))}` : 'Not returnable'}</strong>
+        {p.label} Policy: full credit 48 h+ before, 75% at 24–48 h, 50% under 24 h, closed 2 h before doors. A returned ticket can’t be returned again.
+      </div>
+    </div>
+  )
+}
+
+function ExchangeHistory() {
+  const exchange = useCampus((s) => s.exchange)
+  return (
+    <section className="exchange" aria-labelledby="ex-title">
+      <h2 id="ex-title" className="wallet-title">Exchange history</h2>
+      <ul className="list-plain">
+        {exchange.slice(0, 10).map((x) => (
+          <li key={x.id} className="exchange-row">
+            <span><strong>{x.eventTitle}</strong> · {x.seatIds.join(', ')}</span>
+            <span className={`badge ${x.kind === 'failed' ? 'badge-warn' : 'badge-ok'}`}>{x.kind === 'reissued_to_waitlist' ? 'Reissued to waitlist' : x.kind === 'released_to_inventory' ? 'Back on sale' : x.kind === 'failed' ? 'Failed' : 'Returned'}</span>
+            <span className="small muted">{money(x.amount)} credit · {new Date(x.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · {x.note}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function WalletCard({ booking: b, onCancel, onSplit }: { booking: Booking; onCancel?: () => void; onSplit?: () => void }) {
   const { day, month } = dayParts(b.event.startsAt)
   const cancelled = b.status === 'cancelled'
   return (
@@ -132,7 +181,8 @@ function WalletCard({ booking: b, onCancel }: { booking: Booking; onCancel?: () 
       {onCancel && (
         <div className="wallet-actions">
           <button type="button" className="btn btn-ghost" onClick={() => downloadIcs(b)} aria-label={`Add ${b.event.title} to calendar`}><Icon name="calendar" size={16} /><span className="wallet-btn-text">Calendar</span></button>
-          <button type="button" className="btn btn-ghost wallet-cancel" onClick={onCancel}>Cancel</button>
+          {onSplit && <button type="button" className="btn btn-ghost" onClick={onSplit} aria-label={`Split the cost of ${b.event.title}`}><Icon name="split" size={16} /><span className="wallet-btn-text">Split</span></button>}
+          <button type="button" className="btn btn-ghost wallet-cancel" onClick={onCancel} aria-label={`Return tickets for ${b.event.title}`}>Return</button>
         </div>
       )}
     </motion.article>

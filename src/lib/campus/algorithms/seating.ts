@@ -205,7 +205,6 @@ export function findGroupArrangements(seats: readonly Seat[], opts: GroupOptions
     else if (kind === 'split') reasons.push('Front-and-back pairs — the closest you can sit together right now')
     else reasons.push('Nearest free seats to each other')
     if (opts.maxPricePerSeat !== null) reasons.push(`Every seat within ₹${opts.maxPricePerSeat}`)
-    reasons.push(`₹${total} total · ₹${Math.ceil(total / size)} each`)
     candidates.push({
       id: ids.join('-'),
       seatIds: group.map((s) => s.id),

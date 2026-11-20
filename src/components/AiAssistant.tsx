@@ -40,6 +40,8 @@ interface Props {
   suggestion: Suggestion | null
   onSuggest: (s: Suggestion | null) => void
   onUse: (seatIds: string[]) => void
+  /** Pre-filled request (e.g. from the event matchmaker). Never sent automatically. */
+  initialPrompt?: string
 }
 
 /* Minimal Web Speech API typing (not in lib.dom). */
@@ -70,8 +72,8 @@ export function validateSuggestion(ids: string[], seats: Seat[]): { valid: strin
   return { valid, dropped }
 }
 
-export function AiAssistant({ eventId, seats, selected, suggestion, onSuggest, onUse }: Props) {
-  const [prompt, setPrompt] = useState('')
+export function AiAssistant({ eventId, seats, selected, suggestion, onSuggest, onUse, initialPrompt = '' }: Props) {
+  const [prompt, setPrompt] = useState(initialPrompt)
   const [phase, setPhase] = useState<Phase>('idle')
   const [steps, setSteps] = useState<string[]>([])
   const [message, setMessage] = useState('')

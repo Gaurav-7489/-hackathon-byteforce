@@ -114,3 +114,20 @@
     flex: 1;
   }
 }
+
+.exchange {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+.exchange-row {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.exchange-row .badge {
+  justify-self: start;
+}

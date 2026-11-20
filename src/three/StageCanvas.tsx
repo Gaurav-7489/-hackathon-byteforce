@@ -74,7 +74,9 @@ export default function StageCanvas({ mode, seat = null, hue = 258, className, p
   const frameloop = !active ? 'never' : reduced ? 'demand' : 'always'
   const a11y = label ? { role: 'img' as const, 'aria-label': label } : { 'aria-hidden': true as const }
 
-  if (!supported || lost) {
+  // Low-end / reduced-effects mode: never spin up WebGL.
+  const effectsReduced = document.documentElement.dataset.effects === 'reduced'
+  if (!supported || lost || effectsReduced) {
     return (
       <div className={`stage-canvas ${className ?? ''}`} {...a11y}>
         <StageFallback />

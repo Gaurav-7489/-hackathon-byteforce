@@ -1,6 +1,8 @@
 # SeatLock
 
-A cinematic, accessible seat-booking app for campus events: live seat maps, 5-minute holds, conflict recovery, and an AI seat assistant that **suggests but never books**.
+**The intelligent campus experience platform.** Discover, coordinate, book, attend and manage student events: live seat maps, 5-minute holds, conflict recovery, an AI seat assistant that **suggests but never books** — plus 20 campus-intelligence features for students and organizers.
+
+> Frontend-only. Everything runs in the browser against an in-browser mock API. Simulations are labelled as such in the UI; see [Limitations](#limitations--honest-disclosures).
 
 React 19.3 · TypeScript (strict) · Vite 8 + React Router 7 · React Compiler · Motion · GSAP + ScrollTrigger · Lenis · Three.js / React Three Fiber · Radix · Sonner · Zod (mini)
 
@@ -17,7 +19,7 @@ npm test               # Vitest unit/component tests
 npm run test:e2e       # Playwright end-to-end (builds + serves on :4180)
 ```
 
-**Demo login (mock mode):** `student@seatlock.dev` / `seatlock123`
+**Demo logins (mock mode):** student `student@seatlock.dev` / `seatlock123` · organizer `organizer@seatlock.dev` / `organizer123` (presentation roles only).
 
 ### Connecting the organizer API
 
@@ -45,6 +47,43 @@ Every response is validated with Zod schemas in `src/lib/api/types.ts`. If the o
 | 5 | Booking success | `/success` | Animated 3D-tilt ticket, seat details, QR placeholder, Add to calendar (.ics), View my bookings |
 | 6 | My bookings | `/bookings` | Upcoming/Past tabs, optimistic cancel + confirmation dialog, empty states |
 | – | Design tokens | `/design` | Live token values, contrast ratios, motion curves, seat states, components |
+
+## Campus intelligence — the 20 features
+
+All features share **one authoritative inventory** (the mock API in `src/lib/api/mock/server.ts`) and **one local campus store** (`src/lib/campus/store.ts`, Zod-validated, BroadcastChannel tab sync). Algorithms are pure and deterministic (`src/lib/campus/algorithms/`), so they're unit-tested and replayable.
+
+| # | Feature | Where | What it does |
+|---|---|---|---|
+| 01 | Smart Buddy Seating | Event page → Smart seat tools → **Buddies** | Group size ≤ 4, per-seat budget, same-row/adjacent preferences, demo invite links. Compares up to 3 arrangements (contiguous → front/back split → nearest cluster), highlights on the map, selects only on “Select these seats”. Never holds. |
+| 02 | FairQueue | High-demand events (Synthwave Convocation), Organizer → **Load lab** | Waiting room with position, wait range, queue token, 10-min booking window, expiry + rejoin, offline grace, duplicate-tab detection (BroadcastChannel). Lab compares FairQueue (lottery window, merged duplicates, 4-seat cap) vs FCFS for 100 seeded students. |
+| 03 | Accessibility-first matching | Smart tools → **Access**, Profile | Wheelchair/companion spaces, step-free rows, exits, quiet zones, obstructions and restrooms come from typed organizer metadata (`src/lib/campus/data.ts`), never inferred. Map markers + screen-reader labels. No medical data requested. |
+| 04 | AutoRescue | Hold/poll conflicts on the seat map | Keeps valid seats, ranks up to 3 replacements by proximity, price difference, group adjacency and access needs, explains each, one-click manual swap. Never auto-confirms. |
+| 05 | Campus navigation | `/campus` | Original SVG campus, building search, Dijkstra routes with a step-free option, distance/time, gate advice, seat-section guidance, arrival reminders. |
+| 06 | Verified ticket exchange | `/bookings` → Return | Tiered return policy, one-time return (server-side duplicate guard), seats routed to the waitlist first, exchange history. No resale marketplace. |
+| 07 | Predictive waitlist | Sold-out event (Campus Unplugged), `/waitlist` | Join, position, released-seat offers reserved for 2 minutes, accept → real 5-min hold → checkout, decline/expiry reassigns. Chance shown as a labelled demo estimate (Poisson on simulated history). |
+| 08 | Budget planner | Smart tools → **Budget** | Budget, tickets, tier, travel, food → total, remaining, warnings, affordable seats, cheaper alternative, per-person summary. |
+| 09 | QuietZone | Smart tools → **Quiet** | Organizer quiet zones, simulated noise estimate from listed speakers, live crowding, exits, personal space — each recommendation explained. |
+| 10 | SafeExit | `/campus?tab=safety` | Exits, step-free exits, assembly points, organizer instructions, illustrative plan with nearest-exit arrows, high-contrast mode. Prominently marked “not an approved evacuation plan”. |
+| 11 | Schedule conflicts | `/schedule`, event page banner | Weekly classes, exams, commitments, `.ics` import, full/partial overlap detection, clash-free alternatives, export bookings to `.ics`. |
+| 12 | Group expense split | Success page, `/bookings` → Split | Equal / by seat / custom (whole rupees, remainder-safe), validation, settled status, outstanding balance, copy payment requests. No payments. |
+| 13 | AI Event Matchmaker | `/discover` | Explainable scoring (interests, categories, budget, time of day, history, schedule) with reasons and cautions; hands a pre-filled prompt to the existing seat assistant. |
+| 14 | SeatView preview | Smart tools → **View**, 3D preview | Two-seat comparison: distance, angle, rake, listed obstructions, top-down sightline sketch; “Preview in 3D” moves the existing lazy 3D camera. Labelled approximation. |
+| 15 | No-show recovery | Organizer → **No-shows** | Simulated check-ins, deadline, accessibility-seat protection, eligible preview, release → waitlist first, recovered capacity. |
+| 16 | Crowd heatmap | Organizer → **Crowd**, `/campus` gate card | Minute-by-minute queue model per gate (T−60…T+30), play/scrub, redirect share, alternative-gate tip. Labelled simulated. |
+| 17 | Offline ticket vault | `/tickets`, offline banner | Tickets saved locally, opens offline via the cached app shell, online/offline status, explicit “not proof of entry / not validated”. |
+| 18 | Opportunity pass | `/pass` | Workshops, talks, volunteering, attendance history, milestones, skills, exportable summary, demo certificates watermarked “not issued by an authorized organizer”. |
+| 19 | Companion matching | `/buddies` | Off by default, fictional anonymous profiles, compatibility reasons, requests with simulated replies, block/report, privacy toggles. Never shows seats, location, contacts or schedules. |
+| 20 | Digital twin | Organizer → **Overview / Digital twin / Seats / Waitlist** | Live counts, occupancy, conflicts, pipeline, accessibility availability, Holt forecast, all-event occupancy; accessible 2D grid + optional instanced 3D (`frameloop="demand"`, colour-only updates); scenarios (rush, cancellations, block seats). |
+
+### Demo path for the new features (≈5 min)
+
+1. **Neon Monsoon** → Smart tools → Buddies → *Show on map* → *Select these seats* (4 together under ₹300).
+2. **Access / Quiet / Budget / View** tabs on the same page; then Demo → *Force conflict* → Hold to see AutoRescue's ranked options.
+3. **Synthwave Convocation** → FairQueue waiting room → *Presenter: skip to the front*.
+4. **Campus Unplugged** (sold out) → *Join for 1 seat* → `/waitlist` → *Simulate a cancellation* → accept the offer → checkout.
+5. `/schedule` add a commitment tonight 18:30–19:30 → Neon Monsoon shows the clash.
+6. Bookings → *Split* and *Return*; `/tickets` with DevTools offline.
+7. Sign in as the organizer → `/organizer`: Overview, Digital twin (3D), Crowd (*Play arrivals*), No-shows (move the clock past the deadline → *Release*), Load lab.
 
 ## Compulsory React 19 feature map
 
@@ -157,10 +196,32 @@ Scores from a deployed URL may differ. Re-run Lighthouse against the deployment.
 7. **(6:30) Keyboard-only booking.** Tab to an event card, press Enter, use the arrow keys plus Space to pick seats, Tab to Hold, Enter, then Enter on Confirm.
 8. **(7:30) `/design`.** Show the tokens and seat states, toggle light/dark, then wrap up.
 
+## Performance engineering
+
+- **Route-level splitting** for every screen (13 lazy routes) and **component-level** lazy loading for Smart tools, the nav sheet, organizer panels, the 3D twin and the 3D preview. Only one WebGL context exists at a time.
+- **Smart prefetch:** event cards warm the detail chunk on hover/focus (skipped on Save-Data / 2G); the offline-vault chunk is warmed at idle so it opens without signal.
+- **Network:** in-flight GET de-duplication, 20 s timeouts (AbortController), capped exponential backoff for idempotent reads only — holds/confirms/returns are **never retried automatically**. Seat polling already pauses in hidden tabs.
+- **Low-end mode:** Profile → *Reduce visual effects* (auto-on for Save-Data or ≤ 2 GB devices) disables WebGL, blur and decorative animation via one `data-effects` attribute.
+- **Rendering:** React Compiler; seats animate with CSS only; the twin recolours instances in place and renders on demand; charts are plain SVG.
+- **PWA:** service worker v2 caches the app shell and hashed assets, never API responses; versioned caches; an update toast on new deploys.
+
+## Limitations & honest disclosures
+
+- **No backend.** Seat locking, queues, waitlists, returns and check-ins are simulated in the browser. BroadcastChannel/`storage` sync is same-browser only — not multi-device or server-authoritative consistency.
+- **FairQueue** demonstrates the experience and algorithm; browser code cannot stop real bots or guarantee fairness without server-issued tokens and rate limits.
+- **Tickets** in the vault are local copies with a placeholder QR — not signed, not validated, no anti-replay protection.
+- **Safety plans, crowd levels, noise estimates, seat views and waitlist chances** are illustrative or simulated and labelled in the UI. They are not approved evacuation guidance, sensor data or acoustic measurements.
+- **Roles** (student/organizer) are for presentation only. Local storage is not a secure database; only non-sensitive demo data is stored.
+- With `VITE_API_BASE_URL` set, mock-only features (waitlist offers, organizer analytics, FairQueue) show a notice instead of fake behaviour.
+- Real load balancing belongs to the host/CDN/backend; the static build is CDN-friendly (hashed assets, immutable caching, SPA rewrites for Vercel/Netlify).
+
 ## Project layout
 
 ```
 src/
+  lib/campus/     campus data, Zod-validated store, engine (waitlist/exchange/reminders), algorithms/
+  features/       smart-tools, fair-queue, event-extras, expense-split, organizer (twin, panels, load lab)
+  components/ui/  shared primitives (toggle, segmented, stats, sparkline, bars, sim badge)
   lib/api/        typed client, zod schemas, errors, mock adapter (+ AI intent engine)
   lib/            theme/auth/hold contexts, seats logic, motion tokens, formatting
   components/     SeatMap, AiAssistant, Ticket, EventCard, Poster, dialogs, shell

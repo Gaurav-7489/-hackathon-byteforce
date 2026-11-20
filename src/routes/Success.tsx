@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
@@ -6,11 +7,21 @@ import { StatePanel } from '../components/StatePanel'
 import { Ticket } from '../components/Ticket'
 import { downloadIcs } from '../lib/format'
 import { useHold } from '../lib/hold'
+import { saveToVault, scheduleReminder } from '../lib/campus/engine'
+import { SplitDialog } from '../features/expense-split/SplitDialog'
 import { fadeUp, stagger } from '../lib/motion'
 import './success.css'
 
 export function Success() {
   const { lastBooking: booking } = useHold()
+  const [split, setSplit] = useState(false)
+
+  // Save for offline entry and set an arrival reminder (local, opt-out in Profile).
+  useEffect(() => {
+    if (!booking) return
+    saveToVault(booking)
+    scheduleReminder(booking.id, booking.event.title, booking.event.startsAt, 10)
+  }, [booking])
 
   if (!booking) {
     return (
@@ -43,6 +54,12 @@ export function Success() {
         </button>
         <Link to="/bookings" className="btn btn-primary btn-lg">View my bookings</Link>
       </motion.div>
+      <div className="success-more">
+        {booking.seats.length > 1 && <button type="button" className="btn" onClick={() => setSplit(true)}><Icon name="split" size={18} /> Split the cost</button>}
+        <Link className="btn" to={`/campus?venue=${encodeURIComponent(booking.event.venue)}`}><Icon name="route" size={18} /> Route to venue</Link>
+        <Link className="btn" to="/tickets"><Icon name="wifiOff" size={18} /> Saved for offline</Link>
+      </div>
+      {split && <SplitDialog booking={booking} open onOpenChange={setSplit} />}
     </div>
   )
 }

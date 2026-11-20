@@ -2,7 +2,7 @@ import {
   Activity, lazy, Suspense, use, useActionState, useEffect, useEffectEvent, useMemo, useOptimistic, useRef, useState,
   useTransition, startTransition as startGlobalTransition, ViewTransition,
 } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { AiAssistant, validateSuggestion, type Suggestion } from '../components/AiAssistant'
@@ -21,11 +21,17 @@ import { dateLong, money, rupees, time } from '../lib/format'
 import { useHold } from '../lib/hold'
 import { spring } from '../lib/motion'
 import { invalidate, resource } from '../lib/resource'
-import { isSelectable, MAX_SEATS, rowIndex, suggestAlternative, totalFor } from '../lib/seats'
+import { isSelectable, MAX_SEATS, rowIndex, totalFor } from '../lib/seats'
+import { venueByName } from '../lib/campus/data'
+import { priceDiffLabel, rankReplacements, type Replacement } from '../lib/campus/algorithms/seating'
+import { getCampus } from '../lib/campus/store'
+import { QueueGate } from '../features/fair-queue/QueueRoom'
+import { ClashNotice, InviteNotice, WaitlistCta } from '../features/event-extras/EventExtras'
 import { StageFallback } from '../three/StageFallback'
 import './detail.css'
 
 const StageCanvas = lazy(() => import('../three/StageCanvas'))
+const SmartTools = lazy(() => import('../features/smart-tools/SmartTools').then((m) => ({ default: m.SmartTools })))
 const POLL_MS = 4000
 
 export function EventDetailPage() {
@@ -52,11 +58,21 @@ export function EventDetailPage() {
 
         <ErrorBoundary key={attempt} section="the seat map" onReset={() => { invalidate(`event:${id}`); setAttempt((a) => a + 1) }}>
           <Suspense fallback={<BookingSkeleton />}>
-            <BookingPanel eventPromise={eventPromise} seatsPromise={seatsPromise} />
+            <GatedBooking eventPromise={eventPromise} seatsPromise={seatsPromise} />
           </Suspense>
         </ErrorBoundary>
       </div>
     </div>
+  )
+}
+
+/** High-demand events pass through the FairQueue waiting room before the seat map loads. */
+function GatedBooking({ eventPromise, seatsPromise }: { eventPromise: Promise<EventDetail>; seatsPromise: Promise<SeatsResponse> }) {
+  const event = use(eventPromise)
+  return (
+    <QueueGate event={event}>
+      <BookingPanel eventPromise={eventPromise} seatsPromise={seatsPromise} />
+    </QueueGate>
   )
 }
 
@@ -121,7 +137,8 @@ interface Conflict {
   kind: 'hold' | 'poll'
   lost: Seat[]
   kept: string[]
-  alternatives: Record<string, Seat | null>
+  /** AutoRescue: ranked comparable replacements per lost seat (never applied automatically). */
+  alternatives: Record<string, Replacement[]>
 }
 
 interface HoldFormState {
@@ -145,7 +162,14 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const location = useLocation()
   const { active, setActive } = useHold()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
-  const routeState = location.state as { expired?: boolean; reselect?: string[] } | null
+  const routeState = location.state as { expired?: boolean; reselect?: string[]; aiPrompt?: string } | null
+  const [params] = useSearchParams()
+  const inviteFrom = params.get('invite')
+  const profile = venueByName(event.venue)
+  const markers = new Map<string, 'wheelchair' | 'companion'>([
+    ...(profile?.companionSeats ?? []).map((id) => [id, 'companion'] as const),
+    ...(profile?.wheelchairSpaces ?? []).map((id) => [id, 'wheelchair'] as const),
+  ])
 
   const [seats, setSeats] = useState<Seat[]>(initial.seats)
   const [stale, setStale] = useState(false)
@@ -159,6 +183,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const [lost, setLost] = useState<Set<string>>(new Set())
   const [conflict, setConflict] = useState<Conflict | null>(null)
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
+  const [recommend, setRecommend] = useState<{ ids: string[]; label: string } | null>(null)
   const [announce, setAnnounce] = useState('')
   const [limitHit, setLimitHit] = useState(false)
   const [focusSeat, setFocusSeat] = useState<string | null>(null)
@@ -169,6 +194,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
 
   const selectedSet = new Set(optimisticSelected)
   const suggestedSet = new Set(suggestion?.seatIds ?? [])
+  const highlightSet = new Set(recommend?.ids ?? [])
   const total = totalFor(optimisticSelected, seats)
   const selectedSeats = optimisticSelected.map((sid) => seats.find((s) => s.id === sid)).filter((s): s is Seat => Boolean(s))
 
@@ -187,11 +213,11 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
     const remaining = base.filter((sid) => !lostIds.includes(sid))
     const exclude = new Set(remaining)
     const lostSeats = lostIds.map((sid) => latest.find((s) => s.id === sid)).filter((s): s is Seat => Boolean(s))
-    const alternatives: Record<string, Seat | null> = {}
+    const alternatives: Record<string, Replacement[]> = {}
     for (const s of lostSeats) {
-      const alt = suggestAlternative(s, latest, exclude)
-      alternatives[s.id] = alt
-      if (alt) exclude.add(alt.id)
+      const ranked = rescue(s, latest, remaining, exclude)
+      alternatives[s.id] = ranked
+      if (ranked[0]) exclude.add(ranked[0].seat.id)
     }
     setSelected(remaining)
     flagLost(lostIds)
@@ -200,6 +226,10 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
     setAnnounce(msg)
     toast.warning('A seat was taken', { description: msg })
   }
+
+  /** AutoRescue ranking: proximity, price, group adjacency and the student's accessibility needs. */
+  const rescue = (lostSeat: Seat, latest: Seat[], kept: string[], exclude: ReadonlySet<string>) =>
+    rankReplacements(lostSeat, latest, { kept, exclude, ...(profile ? { profile } : {}), access: getCampus().prefs.access })
 
   const refreshSeats = (): Promise<Seat[] | null> => {
     inflight.current ??= api.seats(event.id)
@@ -269,8 +299,9 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         if (latest && (!fresh || !isSelectable(fresh))) {
           // Roll back: the optimistic seat reverts automatically; explain why.
           flagLost([seat.id])
-          const alt = suggestAlternative(seat, latest, new Set(selected))
-          setConflict({ kind: 'poll', lost: [seat], kept: selected, alternatives: { [seat.id]: alt } })
+          const ranked = rescue(seat, latest, selected, new Set(selected))
+          const alt = ranked[0]?.seat
+          setConflict({ kind: 'poll', lost: [seat], kept: selected, alternatives: { [seat.id]: ranked } })
           setAnnounce(`${seat.id} was just taken by another student.`)
           toast.warning(`${seat.id} was just taken`, { description: alt ? `${alt.id} next to it is free.` : 'Try another seat.' })
           return
@@ -278,6 +309,23 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         setSelected((cur) => (cur.length >= MAX_SEATS ? cur : reduceSelection(cur, { type: 'add', id: seat.id })))
       })
     })
+  }
+
+  /** Smart tools: the student approved a recommendation. Selects (never holds). */
+  const approveRecommendation = (ids: string[], source: string) => {
+    const { valid, dropped } = validateSuggestion(ids, seats)
+    if (valid.length === 0) {
+      toast.error('Those seats were just taken', { description: 'The recommendations refresh with live availability.' })
+      return
+    }
+    setSelected(valid)
+    setRecommend(null)
+    setSuggestion(null)
+    setConflict(null)
+    setFocusSeat(valid[0] ?? null)
+    const msg = `Selected ${valid.join(', ')} from ${source}.${dropped.length ? ` ${dropped.join(', ')} ${dropped.length > 1 ? 'are' : 'is'} no longer available.` : ''}`
+    setAnnounce(msg)
+    toast.success(`${valid.length} seat${valid.length > 1 ? 's' : ''} selected`, { description: 'Review them, then hold.' })
   }
 
   const applySuggestion = (ids: string[]) => {
@@ -293,6 +341,10 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
 
   const swapIn = (lostId: string, alt: Seat) => {
     if (selected.length >= MAX_SEATS) return
+    if (!isSelectable(seats.find((s) => s.id === alt.id) ?? alt)) {
+      toast.error(`${alt.id} was taken too`, { description: 'Pick another option.' })
+      return
+    }
     setSelected((cur) => [...cur, alt.id])
     setConflict((c) => {
       if (!c) return c
@@ -328,7 +380,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   }, { error: null })
 
   // Stable seat reference for the 3D preview (manual memo: the R3F scene keys an effect on it).
-  const previewSeatId = optimisticSelected.at(-1) ?? focusSeat
+  const previewSeatId = focusSeat && previewOpen && !optimisticSelected.includes(focusSeat) ? focusSeat : optimisticSelected.at(-1) ?? focusSeat
   const previewSeat = seats.find((s) => s.id === previewSeatId)
   const pr = previewSeat ? rowIndex(previewSeat.row) : -1
   const pc = previewSeat?.col ?? -1
@@ -356,6 +408,8 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>
 
       <div className="booking-map">
+        {inviteFrom && <InviteNotice from={inviteFrom} />}
+        <ClashNotice event={event} />
         {expiredNotice && (
           <div className="alert" data-tone="warning" role="alert">
             <Icon name="clock" size={18} />
@@ -377,12 +431,25 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                   <span>{conflict.kept.length ? `We kept ${conflict.kept.join(', ')} for you.` : 'Your other choices are unaffected.'}</span>
                   <div className="conflict-alts">
                     {conflict.lost.map((s) => {
-                      const alt = conflict.alternatives[s.id]
-                      return alt ? (
-                        <button key={s.id} type="button" className="btn btn-primary" onClick={() => swapIn(s.id, alt)} disabled={selected.length >= MAX_SEATS}>
-                          Swap in {alt.id} ({money(alt.price)})
-                        </button>
-                      ) : null
+                      const [best, ...others] = conflict.alternatives[s.id] ?? []
+                      if (!best) return <span key={s.id} className="small">No comparable seat is free near {s.id} right now.</span>
+                      return (
+                        <div key={s.id} className="rescue">
+                          <button type="button" className="btn btn-primary" onClick={() => swapIn(s.id, best.seat)} disabled={selected.length >= MAX_SEATS}>
+                            Swap in {best.seat.id} ({money(best.seat.price)})
+                          </button>
+                          <span className="rescue-why small">{best.reasons.join(' · ')} · {priceDiffLabel(best.priceDiff)}</span>
+                          {others.length > 0 && (
+                            <div className="rescue-more">
+                              {others.map((o) => (
+                                <button key={o.seat.id} type="button" className="btn btn-ghost" onClick={() => swapIn(s.id, o.seat)} disabled={selected.length >= MAX_SEATS} aria-label={`Use ${o.seat.id} instead of ${s.id}: ${o.reasons.join(', ')}, ${priceDiffLabel(o.priceDiff)}`}>
+                                  Or {o.seat.id} · {priceDiffLabel(o.priceDiff)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
                     })}
                   </div>
                 </div>
@@ -399,7 +466,14 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
             {stale ? 'Reconnecting…' : 'Live availability'}
           </span>
         </div>
-        <SeatMap seats={seats} selected={selectedSet} suggested={suggestedSet} lost={lost} onToggle={toggleSeat} focusSeatId={focusSeat} />
+        {recommend && (
+          <div className="rec-banner" role="status">
+            <Icon name="eye" size={16} />
+            <span>Showing <strong>{recommend.ids.join(', ')}</strong> ({recommend.label}). Nothing is selected until you choose “Select these seats”.</span>
+            <button type="button" className="btn btn-ghost" onClick={() => setRecommend(null)}>Clear</button>
+          </div>
+        )}
+        <SeatMap seats={seats} selected={selectedSet} suggested={suggestedSet} lost={lost} onToggle={toggleSeat} focusSeatId={focusSeat} highlight={highlightSet} highlightLabel={recommend?.label} markers={markers} />
         <SeatLegend />
       </div>
 
@@ -439,6 +513,26 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
           {isDesktop && holdForm}
         </section>
 
+        <WaitlistCta event={event} seats={seats} />
+
+        <ErrorBoundary section="the smart seat tools" compact>
+          <Suspense fallback={<div className="skeleton" style={{ height: 320, borderRadius: 20 }} />}>
+            <SmartTools
+              event={event}
+              seats={seats}
+              selected={optimisticSelected}
+              highlighted={recommend?.ids ?? []}
+              onHighlight={(ids, label) => {
+                setRecommend(ids ? { ids, label: label ?? 'recommended' } : null)
+                if (ids?.[0]) setFocusSeat(ids[0])
+                if (ids) setAnnounce(`Showing ${ids.join(', ')} on the map as a ${label ?? 'recommendation'}.`)
+              }}
+              onApprove={approveRecommendation}
+              onPreview={(id) => { setFocusSeat(id); setPreviewOpen(true); document.getElementById('preview-title')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
+            />
+          </Suspense>
+        </ErrorBoundary>
+
         {!isDesktop && (
           <button type="button" className="btn btn-block assistant-toggle" aria-expanded={assistantOpen} aria-controls="assistant-panel" onClick={() => setAssistantOpen((o) => !o)}>
             <Icon name="sparkle" size={18} /> {assistantOpen ? 'Hide seat assistant' : 'Ask the seat assistant'}
@@ -447,7 +541,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         <div id="assistant-panel">
           {/* <Activity> keeps the assistant's conversation alive while hidden. */}
           <Activity mode={assistantOpen || isDesktop ? 'visible' : 'hidden'}>
-            <AiAssistant eventId={event.id} seats={seats} selected={selectedSet} suggestion={suggestion} onSuggest={setSuggestion} onUse={applySuggestion} />
+            <AiAssistant eventId={event.id} seats={seats} selected={selectedSet} suggestion={suggestion} onSuggest={setSuggestion} onUse={applySuggestion} {...(routeState?.aiPrompt ? { initialPrompt: routeState.aiPrompt } : {})} />
           </Activity>
         </div>
 

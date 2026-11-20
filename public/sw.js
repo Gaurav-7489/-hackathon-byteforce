@@ -1,8 +1,15 @@
-/* SeatLock service worker — offline page + static asset cache. Never caches API calls. */
-const VERSION = 'seatlock-v1'
+/* SeatLock service worker.
+ * - App shell: network-first navigations; the last good index.html is cached so
+ *   the SPA (and the Offline Ticket Vault) opens without a connection.
+ * - Hashed /assets/ are immutable: cache-first.
+ * - API calls, the organizer API and anything cross-origin are never cached:
+ *   seat availability is never served from cache, and offline mode can't fake a booking.
+ */
+const VERSION = 'seatlock-v2'
 const STATIC = `${VERSION}-static`
 const PAGES = `${VERSION}-pages`
-const PRECACHE = ['/offline.html', '/icon.svg', '/manifest.webmanifest']
+const SHELL = '/index.html'
+const PRECACHE = ['/', '/offline.html', '/icon.svg', '/icon-maskable.svg', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(PAGES).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()))
@@ -21,19 +28,24 @@ self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
   const url = new URL(req.url)
-  // Cross-origin requests (including the organizer API) and anything that isn't a page or static asset pass straight through.
   if (url.origin !== self.location.origin) return
 
   if (req.mode === 'navigate') {
-    // Network-first for pages; fall back to the offline page.
     event.respondWith(
-      fetch(req).catch(async () => (await caches.match(req)) || (await caches.match('/offline.html')) || Response.error()),
+      fetch(req)
+        .then((res) => {
+          if (res.ok && (res.headers.get('content-type') || '').includes('text/html')) {
+            const copy = res.clone()
+            void caches.open(PAGES).then((c) => c.put(SHELL, copy))
+          }
+          return res
+        })
+        .catch(async () => (await caches.match(SHELL)) || (await caches.match('/')) || (await caches.match('/offline.html')) || Response.error()),
     )
     return
   }
 
-  if (url.pathname.startsWith('/assets/')) {
-    // Hashed build assets are immutable: cache-first.
+  if (url.pathname.startsWith('/assets/') || url.pathname.endsWith('.woff2')) {
     event.respondWith(
       caches.match(req).then(
         (hit) =>

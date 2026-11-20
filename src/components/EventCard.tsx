@@ -8,6 +8,16 @@ import { useFinePointer, useReducedMotion } from '../hooks/useMediaQuery'
 import { Icon } from './Icon'
 import { Poster } from './Poster'
 
+/** Warm the detail-route chunk on hover/focus — skipped on Save-Data. */
+let detailPrefetched = false
+function prefetchDetail() {
+  if (detailPrefetched) return
+  const nav = navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }
+  if (nav.connection?.saveData || /2g/.test(nav.connection?.effectiveType ?? '')) return
+  detailPrefetched = true
+  void import('../routes/EventDetail').catch(() => { detailPrefetched = false })
+}
+
 export function EventCard({ event }: { event: EventSummary }) {
   const fine = useFinePointer()
   const reduced = useReducedMotion()
@@ -40,7 +50,9 @@ export function EventCard({ event }: { event: EventSummary }) {
         to={`/events/${event.id}`}
         className="event-card-link"
         onClick={() => summaryCache.set(event.id, event)}
-        aria-label={`${event.title}, ${relativeDay(event.startsAt)} at ${time(event.startsAt)}, ${event.venue}, from ${money(event.priceFrom)}, ${soldOut ? 'sold out' : `${event.seatsLeft} seats left`}`}
+        onPointerEnter={prefetchDetail}
+        onFocus={prefetchDetail}
+        aria-label={`${event.title}, ${relativeDay(event.startsAt)} at ${time(event.startsAt)}, ${event.venue}, from ${money(event.priceFrom)}, ${soldOut ? 'sold out, waitlist open' : `${event.seatsLeft} seats left`}${event.highDemand ? ', high demand: fair queue' : ''}`}
       >
         <div className="event-card-media">
           <ViewTransition name={`poster-${event.id}`} share="poster-morph">
@@ -50,6 +62,7 @@ export function EventCard({ event }: { event: EventSummary }) {
             <span>{day}</span>
             <span>{month}</span>
           </span>
+          {event.highDemand && !soldOut && <span className="event-card-hot">FairQueue</span>}
           <span className={`event-card-left ${scarcity < 0.2 ? 'is-low' : ''}`}>
             {soldOut ? 'Sold out' : scarcity < 0.2 ? `Only ${event.seatsLeft} left` : `${event.seatsLeft} seats left`}
           </span>

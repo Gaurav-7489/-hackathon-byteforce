@@ -6,7 +6,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { EventCard, EventCardSkeleton } from '../components/EventCard'
-import { Icon } from '../components/Icon'
+import { Icon, type IconName } from '../components/Icon'
 import { MagneticLink } from '../components/MagneticButton'
 import { Poster } from '../components/Poster'
 import { StatePanel } from '../components/StatePanel'
@@ -201,6 +201,8 @@ export function Events() {
         </div>
       </section>
 
+      <CampusStrip />
+
       {/* Chapter 3 — Featured (pinned scroll sequence driving the 3D camera) */}
       <section id="featured" className="featured" aria-labelledby="featured-title">
         <ErrorBoundary section="the featured event" compact>
@@ -325,5 +327,31 @@ function Featured({ promise }: { promise: Promise<EventSummary[]> }) {
       </div>
     </div>
     </div>
+  )
+}
+
+const STRIP: { to: string; icon: IconName; title: string; body: string }[] = [
+  { to: '/discover', icon: 'sparkle', title: 'For you', body: 'Explainable picks from your interests, budget and timetable' },
+  { to: '/campus', icon: 'map', title: 'Campus map', body: 'Step-free routes and the least busy gate' },
+  { to: '/waitlist', icon: 'queue', title: 'Waitlist', body: 'Sold out? Released seats come to you first' },
+  { to: '/schedule', icon: 'calendar', title: 'Schedule', body: 'Catch clashes with classes and exams' },
+]
+
+/** Entry points to the campus-intelligence features (plain links: no event-card markup). */
+function CampusStrip() {
+  return (
+    <section className="container campus-strip" aria-labelledby="strip-title">
+      <h2 id="strip-title" className="campus-strip-title">More than a seat map</h2>
+      <ul className="campus-strip-list">
+        {STRIP.map((s) => (
+          <li key={s.to}>
+            <Link to={s.to} className="campus-strip-link">
+              <Icon name={s.icon} size={20} />
+              <span><strong>{s.title}</strong><span>{s.body}</span></span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

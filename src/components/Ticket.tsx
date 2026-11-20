@@ -7,7 +7,7 @@ import { useFinePointer, useReducedMotion } from '../hooks/useMediaQuery'
 import './ticket.css'
 
 /** Deterministic QR-style placeholder (not a scannable code). */
-function QrPlaceholder({ seed }: { seed: string }) {
+export function QrPlaceholder({ seed }: { seed: string }) {
   let h = 2166136261
   for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
   const N = 21

@@ -77,7 +77,7 @@ export function makeQueueStudents(seed: number, n = 100): QueueStudent[] {
 /**
  * Fair mode: everyone who arrives within the 8-second opening window gets a
  * random (lottery) position, duplicate sessions are merged into one token and
- * each student is limited to 4 seats. FCFS: pure arrival order — the fastest
+ * each student is limited to 4 seats (2 when demand is over 1.5× supply). FCFS: pure arrival order — the fastest
  * connections (and duplicate tabs) win.
  */
 export function runQueue(students: readonly QueueStudent[], opts: { mode: 'fair' | 'fcfs'; seats: number; admitPerSecond: number; seed: number; windowMs?: number }): QueueRun {
@@ -100,6 +100,7 @@ export function runQueue(students: readonly QueueStudent[], opts: { mode: 'fair'
     order = [...pool].sort((a, b) => a.arrivalMs - b.arrivalMs)
   }
   let seatsLeft = opts.seats
+  const overDemand = pool.reduce((t, s) => t + s.wants, 0) > opts.seats * 1.5
   const outcomes: QueueOutcome[] = []
   const frames: QueueRun['frames'] = []
   const claimed = new Map<string, number>()
@@ -107,7 +108,8 @@ export function runQueue(students: readonly QueueStudent[], opts: { mode: 'fair'
     const t = Math.floor(i / opts.admitPerSecond)
     const owner = s.duplicateOf ?? s.id
     const already = claimed.get(owner) ?? 0
-    const limit = opts.mode === 'fair' ? Math.max(0, 4 - already) : s.wants
+    // Fair mode: 4 seats per student normally, 2 when demand clearly exceeds supply.
+    const limit = opts.mode === 'fair' ? Math.max(0, (overDemand ? 2 : 4) - already) : s.wants
     const want = Math.min(s.wants, limit)
     const got = Math.min(want, seatsLeft)
     seatsLeft -= got
@@ -296,7 +298,7 @@ export function simulateLoad(o: LoadOptions): LoadRun {
       if (e.kind === 'conflict') counters.conflicts++
       if (e.kind === 'error') counters.errors++
     }
-    const win = latencies.filter((l) => l.t > until - 5000 && l.t <= until).map((l) => l.v)
+    const win = latencies.filter((l) => l.t <= until).map((l) => l.v)
     const q = inflightAt.filter((x) => x.t <= until).at(-1)?.v ?? 0
     let available = 0, held = 0, booked = 0
     for (const v of replay.values()) { if (v === 'available') available++; else if (v === 'held') held++; else booked++ }

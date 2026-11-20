@@ -26,13 +26,18 @@ interface Props {
   onToggle: (seat: Seat) => void
   /** Imperative focus target (e.g. after "Use these seats"). */
   focusSeatId?: string | null
+  /** Smart-tool recommendation (buddy / access / comfort / budget). Visual only — never selects. */
+  highlight?: ReadonlySet<string>
+  highlightLabel?: string
+  /** Organizer-listed seat markers. */
+  markers?: ReadonlyMap<string, 'wheelchair' | 'companion'>
 }
 
 interface View { x: number; y: number; s: number }
 const MIN_S = 0.5
 const MAX_S = 2.2
 
-export function SeatMap({ seats, selected, suggested, lost, onToggle, focusSeatId }: Props) {
+export function SeatMap({ seats, selected, suggested, lost, onToggle, focusSeatId, highlight, highlightLabel = 'recommended', markers }: Props) {
   const reduced = useReducedMotion()
   const viewportRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -292,7 +297,9 @@ export function SeatMap({ seats, selected, suggested, lost, onToggle, focusSeatI
                   const icon = STATUS_ICON[status]
                   const isAi = suggested.has(seat.id)
                   const isLost = lost.has(seat.id)
-                  const label = `${seat.id}, row ${seat.row} seat ${seat.number}${seat.isAisle ? ', aisle' : ''}, ${money(seat.price)}, ${STATUS_LABEL[status]}${isAi ? ', AI suggestion' : ''}${isLost ? ', just taken' : ''}`
+                  const isRec = highlight?.has(seat.id) ?? false
+                  const marker = markers?.get(seat.id)
+                  const label = `${seat.id}, row ${seat.row} seat ${seat.number}${seat.isAisle ? ', aisle' : ''}${marker === 'wheelchair' ? ', wheelchair space' : marker === 'companion' ? ', companion seat' : ''}, ${money(seat.price)}, ${STATUS_LABEL[status]}${isAi ? ', AI suggestion' : ''}${isRec ? `, ${highlightLabel}` : ''}${isLost ? ', just taken' : ''}`
                   return (
                     <div role="gridcell" key={seat.id} style={{ gridColumn: seat.col + 2 }}>
                       <ViewTransition update="seat-update" default="none">
@@ -302,6 +309,8 @@ export function SeatMap({ seats, selected, suggested, lost, onToggle, focusSeatI
                           data-status={status}
                           data-ai={isAi || undefined}
                           data-lost={isLost || undefined}
+                          data-rec={isRec || undefined}
+                          data-marker={marker}
                           className="seat"
                           tabIndex={seat.id === rovingId ? 0 : -1}
                           aria-label={label}
@@ -312,6 +321,7 @@ export function SeatMap({ seats, selected, suggested, lost, onToggle, focusSeatI
                         >
                           {icon ? <Icon name={icon} size={16} /> : <span className="seat-num" aria-hidden="true">{seat.number}</span>}
                           {isAi && <span className="seat-ai-dot" aria-hidden="true"><Icon name="sparkle" size={10} /></span>}
+                          {marker && <span className="seat-marker" aria-hidden="true">{marker === 'wheelchair' ? <Icon name="access" size={10} /> : 'C'}</span>}
                         </button>
                       </ViewTransition>
                     </div>
@@ -345,6 +355,14 @@ export function SeatLegend() {
       <li>
         <span className="seat seat-swatch" data-status="available" data-ai aria-hidden="true" />
         AI suggestion
+      </li>
+      <li>
+        <span className="seat seat-swatch" data-status="available" data-rec aria-hidden="true" />
+        Smart pick
+      </li>
+      <li>
+        <span className="seat seat-swatch" data-status="available" data-marker="wheelchair" aria-hidden="true"><span className="seat-marker"><Icon name="access" size={10} /></span></span>
+        Wheelchair space
       </li>
     </ul>
   )

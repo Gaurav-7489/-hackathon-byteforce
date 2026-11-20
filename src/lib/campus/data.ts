@@ -215,20 +215,20 @@ export const VENUE_DOORS: Record<string, { door: string; stepFreeDoor: string }>
 
 export const CROWD_ZONES: Record<string, CrowdZone[]> = {
   'Open Air Theatre': [
-    { id: 'oat-g1', label: 'OAT Gate 1 (steps)', x: 690, y: 435, capacityPerMin: 6 },
-    { id: 'oat-g2', label: 'OAT Gate 2 (ramp)', x: 860, y: 470, capacityPerMin: 4 },
+    { id: 'oat-g1', label: 'OAT Gate 1 (steps)', x: 690, y: 435, capacityPerMin: 4 },
+    { id: 'oat-g2', label: 'OAT Gate 2 (ramp)', x: 860, y: 470, capacityPerMin: 3 },
   ],
   'Seminar Hall B': [
-    { id: 'sem-a', label: 'Door A', x: 260, y: 432, capacityPerMin: 5 },
-    { id: 'sem-b', label: 'Door B', x: 330, y: 380, capacityPerMin: 3 },
+    { id: 'sem-a', label: 'Door A', x: 260, y: 432, capacityPerMin: 4 },
+    { id: 'sem-b', label: 'Door B', x: 330, y: 380, capacityPerMin: 2 },
   ],
   'Convocation Hall': [
-    { id: 'con-n', label: 'North Door', x: 800, y: 212, capacityPerMin: 6 },
-    { id: 'con-e', label: 'East Door', x: 905, y: 150, capacityPerMin: 4 },
+    { id: 'con-n', label: 'North Door', x: 800, y: 212, capacityPerMin: 4 },
+    { id: 'con-e', label: 'East Door', x: 905, y: 150, capacityPerMin: 3 },
   ],
   'Main Auditorium': [
-    { id: 'aud-a', label: 'Gate A (front)', x: 510, y: 232, capacityPerMin: 6 },
-    { id: 'aud-b', label: 'Gate B (side ramp)', x: 610, y: 200, capacityPerMin: 4 },
+    { id: 'aud-a', label: 'Gate A (front)', x: 510, y: 232, capacityPerMin: 4 },
+    { id: 'aud-b', label: 'Gate B (side ramp)', x: 610, y: 200, capacityPerMin: 3 },
   ],
 }
 

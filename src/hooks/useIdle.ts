@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 export function useWebGLReady(): boolean {
   const [ready, setReady] = useState(false)
   useEffect(() => {
+    if (document.documentElement.dataset.effects === 'reduced') return
     const nav = navigator as Navigator & { connection?: { saveData?: boolean }; hardwareConcurrency?: number }
     const capable =
       window.matchMedia('(hover: hover) and (pointer: fine) and (min-width: 768px)').matches &&
