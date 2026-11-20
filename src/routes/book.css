@@ -56,6 +56,11 @@
   align-items: center;
   gap: 6px;
 }
+.bk-name {
+  margin-right: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
 .bk-avatar {
   width: 36px;
   height: 36px;

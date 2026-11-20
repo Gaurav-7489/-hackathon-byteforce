@@ -5,7 +5,7 @@ import { Mark } from '../booking/Mark'
 import type { View } from '../booking/Scene3D'
 import { useLiveInventory } from '../booking/useLiveInventory'
 import { useAuth } from '../lib/auth'
-import { rupees } from '../lib/format'
+import { rupees } from '../booking/format'
 import '../booking/lk.css'
 import './book.css'
 
@@ -194,7 +194,7 @@ function Booking({ mode }: { mode: Mode }) {
       <meta name="description" content={`Live ${mode === 'cinema' ? 'cinema hall' : 'bus'} seat map in 3D. Lock seats for five minutes while you pay.`} />
 
       <header className="bk-top">
-        <Link to="/login" aria-label="SeatLock home">
+        <Link to="/" aria-label="SeatLock home">
           <Mark />
         </Link>
         <nav className="bk-switch" aria-label="Booking type">
@@ -206,9 +206,7 @@ function Booking({ mode }: { mode: Mode }) {
           </NavLink>
         </nav>
         <div className="bk-user">
-          <Link to="/events" className="lk-btn lk-btn-ghost bk-hide-sm">
-            Campus events
-          </Link>
+          <span className="bk-name bk-hide-sm">{user?.name}</span>
           <button
             type="button"
             className="bk-avatar"

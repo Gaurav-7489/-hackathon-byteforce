@@ -1,5 +1,5 @@
-import { createContext, use, useEffect, useState, type ReactNode } from 'react'
-import { getToken, setToken, setUnauthorizedHandler } from './api/client'
+import { createContext, use, useState, type ReactNode } from 'react'
+import { getToken, setToken } from './api/client'
 import type { User } from './api/types'
 
 interface AuthState {
@@ -33,10 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null)
   }
-
-  useEffect(() => {
-    setUnauthorizedHandler(signOut)
-  })
 
   const signIn = (token: string, next: User) => {
     setToken(token)

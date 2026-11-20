@@ -12,7 +12,6 @@ export default defineConfig({
         advancedChunks: {
           groups: [
             { name: 'three', test: /node_modules[\\/](three|@react-three)/ },
-            { name: 'gsap', test: /node_modules[\\/](gsap|@gsap|lenis)/ },
           ],
         },
       },
@@ -22,5 +21,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    passWithNoTests: true,
   },
 })

@@ -1,5 +1,5 @@
 import { useActionState, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { Mark } from '../booking/Mark'
 import { BusArt, CinemaArt } from '../booking/ModeArt'
 import type { Mode } from '../booking/data'
@@ -134,9 +134,7 @@ export function Onboard() {
         <div className="ob-form">
           <div className="ob-progress">
             {step === 0 ? (
-              <Link to="/events" className="lk-icon-btn" aria-label="Back to events">
-                <Chevron />
-              </Link>
+              <span className="lk-icon-btn" aria-hidden="true" />
             ) : (
               <button type="button" className="lk-icon-btn" aria-label="Back" onClick={() => setStep(0)}>
                 <Chevron />
