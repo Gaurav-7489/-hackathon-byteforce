@@ -1,8 +1,8 @@
-/** SeatLock wordmark for the light "ledger" surfaces: a seat glyph with a signal-yellow lock dot. */
+/** SeatLock wordmark: a seat glyph with a signal-yellow lock dot. */
 export function Mark({ invert = false }: { invert?: boolean }) {
-  const ink = invert ? '#ffffff' : '#0f1a14'
+  const ink = invert ? '#ffffff' : 'currentColor'
   return (
-    <span className="lk-mark" style={{ color: ink }}>
+    <span className="lk-mark" style={invert ? { color: '#fff' } : undefined}>
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
         <path d="M6 13V8.5A3.5 3.5 0 0 1 9.5 5h7A3.5 3.5 0 0 1 20 8.5V13" fill="none" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
         <rect x="3.5" y="12.5" width="19" height="6.5" rx="2" fill={ink} />

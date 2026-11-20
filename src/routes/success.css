@@ -1,0 +1,61 @@
+.sc {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  overflow: hidden;
+}
+.sc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lk-gain);
+}
+.sc-title {
+  max-width: 16ch;
+}
+.sc-sub {
+  max-width: 52ch;
+  color: var(--lk-muted);
+  margin-bottom: 16px;
+}
+.sc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.sc-burst {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  pointer-events: none;
+}
+.sc-burst span {
+  position: absolute;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--lk-signal);
+  opacity: 0;
+  transform: rotate(calc(var(--i) * 20deg)) translateY(0);
+  animation: sc-burst 1.2s var(--lk-ease) calc(0.3s + var(--i) * 15ms) both;
+}
+.sc-burst span:nth-child(3n) {
+  background: var(--lk-gain);
+}
+.sc-burst span:nth-child(4n) {
+  background: var(--lk-ai);
+}
+@keyframes sc-burst {
+  0% {
+    opacity: 1;
+    transform: rotate(calc(var(--i) * 20deg)) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(calc(var(--i) * 20deg)) translateY(-220px) rotate(200deg);
+  }
+}

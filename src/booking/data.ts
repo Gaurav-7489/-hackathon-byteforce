@@ -1,12 +1,10 @@
 /**
- * Seat inventory for the two booking modes (cinema hall, intercity bus) plus a
- * small deterministic "live market" simulation: other people lock, buy and
- * release seats while you look, so the 3D view always has something happening.
- * Pure data — no React, no three.js — so it is cheap to test and to lazy-load.
+ * Physical seat layouts for the two venue types (cinema hall, intercity coach).
+ * Shared by the mock API (which seeds live inventory from them) and the 3D
+ * scene (which needs world positions). Pure data — no React, no three.js.
  */
 
 export type Mode = 'cinema' | 'bus'
-export type SeatStatus = 'free' | 'locked' | 'sold'
 
 export interface Seat {
   id: string
@@ -39,20 +37,8 @@ export interface Layout {
   /** Rows shown in the 2D map: each entry is the seat index or null for a gap. */
   grid: (number | null)[][]
   rowLabels: string[]
-}
-
-export interface Slot {
-  id: string
-  label: string
-  sub: string
-  /** Base fill 0..1 used to seed the simulation. */
-  fill: number
-}
-
-export interface Listing {
-  title: string
-  meta: string[]
-  slots: Slot[]
+  /** Seat id → index into `seats`. */
+  index: Map<string, number>
 }
 
 /* ---------------------------------------------------------------- Seeded RNG */
@@ -126,7 +112,7 @@ function buildCinema(): Layout {
     if (r === 4) z += 0.5 // cross-aisle between Classic and Prime
     if (r === 10) z += 0.5
   }
-  return { mode: 'cinema', seats, tiers: CINEMA_TIERS, grid, rowLabels }
+  return { mode: 'cinema', seats, tiers: CINEMA_TIERS, grid, rowLabels, index: new Map(seats.map((x, i) => [x.id, i])) }
 }
 
 /* ----------------------------------------------------------------------- Bus */
@@ -153,6 +139,7 @@ function buildBus(): Layout {
       const price = BUS_TIERS.find((t) => t.id === tier)!.price
       const tags: string[] = []
       if (window) tags.push('Window')
+      else if (!last) tags.push('Aisle')
       if (!last && (r === 1 || r === 2) && c < 2) tags.push('Women only')
       if (r === 4 && c === 3) tags.push('Emergency exit')
       const id = `${r + 1}${'ABCDE'[c]}`
@@ -163,7 +150,7 @@ function buildBus(): Layout {
     grid.push(gridRow)
     rowLabels.push(String(r + 1))
   }
-  return { mode: 'bus', seats, tiers: BUS_TIERS, grid, rowLabels }
+  return { mode: 'bus', seats, tiers: BUS_TIERS, grid, rowLabels, index: new Map(seats.map((x, i) => [x.id, i])) }
 }
 
 const cache: Partial<Record<Mode, Layout>> = {}
@@ -171,101 +158,3 @@ export function layoutFor(mode: Mode): Layout {
   return (cache[mode] ??= mode === 'cinema' ? buildCinema() : buildBus())
 }
 
-/* ------------------------------------------------------------------ Listings */
-
-export const LISTINGS: Record<Mode, Listing> = {
-  cinema: {
-    title: 'Northbound',
-    meta: ['UA 13+', '2h 18m', 'Sci-fi · Drama', 'Hall 4 · Dolby Atmos'],
-    slots: [
-      { id: 'c1030', label: '10:30', sub: 'Morning', fill: 0.22 },
-      { id: 'c1315', label: '13:15', sub: 'Matinee', fill: 0.41 },
-      { id: 'c1640', label: '16:40', sub: 'Evening', fill: 0.58 },
-      { id: 'c1955', label: '19:55', sub: 'Prime', fill: 0.79 },
-      { id: 'c2230', label: '22:30', sub: 'Late', fill: 0.47 },
-    ],
-  },
-  bus: {
-    title: 'Bengaluru → Hyderabad',
-    meta: ['AC Seater 2+2', '9h 40m', '574 km', 'Volvo B11R'],
-    slots: [
-      { id: 'b1945', label: '19:45', sub: 'Majestic', fill: 0.34 },
-      { id: 'b2115', label: '21:15', sub: 'Silk Board', fill: 0.62 },
-      { id: 'b2230', label: '22:30', sub: 'Hebbal', fill: 0.81 },
-      { id: 'b2350', label: '23:50', sub: 'Majestic', fill: 0.18 },
-    ],
-  },
-}
-
-/** Initial statuses for one show / departure, deterministic per slot id. */
-export function seedStatuses(layout: Layout, slot: Slot): SeatStatus[] {
-  const rand = rng(hash(slot.id))
-  return layout.seats.map((s) => {
-    // Popular spots fill first: the centre for cinemas, windows for buses.
-    const bias = layout.mode === 'cinema' ? (s.tags.includes('Sweet spot') ? 0.18 : 0) - (s.row < 2 ? 0.2 : 0) : s.tags.includes('Window') ? 0.12 : 0
-    const p = rand()
-    if (p < slot.fill + bias) return 'sold'
-    if (p < slot.fill + bias + 0.035) return 'locked'
-    return 'free'
-  })
-}
-
-/* ---------------------------------------------------------------- Simulation */
-
-export type FeedKind = 'lock' | 'sold' | 'release'
-export interface FeedItem {
-  id: number
-  at: number
-  kind: FeedKind
-  seats: string[]
-  who: string
-}
-
-const NAMES = ['Aarav', 'Diya', 'Kabir', 'Meera', 'Rohan', 'Isha', 'Vikram', 'Ananya', 'Arjun', 'Sara', 'Neel', 'Tara']
-
-export interface Step {
-  changes: { index: number; status: SeatStatus }[]
-  feed: Omit<FeedItem, 'id' | 'at'> | null
-}
-
-/**
- * One tick of other people's activity. Picks a group lock (1–4 neighbours in a
- * row), a checkout of an existing lock, or a released hold. `exclude` holds the
- * viewer's own seats, which the simulation never touches.
- */
-export function simulateStep(layout: Layout, statuses: SeatStatus[], exclude: Set<number>, rand: () => number): Step {
-  const roll = rand()
-  const locked: number[] = []
-  statuses.forEach((s, i) => s === 'locked' && !exclude.has(i) && locked.push(i))
-  const who = NAMES[Math.floor(rand() * NAMES.length)]!
-
-  if (roll < 0.52 || locked.length === 0) {
-    const free: number[] = []
-    statuses.forEach((s, i) => s === 'free' && !exclude.has(i) && free.push(i))
-    if (free.length === 0) return { changes: [], feed: null }
-    const start = free[Math.floor(rand() * free.length)]!
-    const size = 1 + Math.floor(rand() * rand() * 4)
-    const group = [start]
-    const seat = layout.seats[start]!
-    for (let k = 1; k < size; k++) {
-      const next = start + k
-      const n = layout.seats[next]
-      if (!n || n.row !== seat.row || statuses[next] !== 'free' || exclude.has(next)) break
-      group.push(next)
-    }
-    return {
-      changes: group.map((index) => ({ index, status: 'locked' })),
-      feed: { kind: 'lock', seats: group.map((i) => layout.seats[i]!.id), who },
-    }
-  }
-
-  // Locks resolve as a group: everything in that row's contiguous run.
-  const pick = locked[Math.floor(rand() * locked.length)]!
-  const group = [pick]
-  for (let n = pick + 1; statuses[n] === 'locked' && layout.seats[n]?.row === layout.seats[pick]!.row && !exclude.has(n); n++) group.push(n)
-  const status: SeatStatus = roll < 0.82 ? 'sold' : 'free'
-  return {
-    changes: group.map((index) => ({ index, status })),
-    feed: { kind: status === 'sold' ? 'sold' : 'release', seats: group.map((i) => layout.seats[i]!.id), who },
-  }
-}

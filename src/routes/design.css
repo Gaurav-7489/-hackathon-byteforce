@@ -1,0 +1,138 @@
+.ds {
+  display: grid;
+  gap: 28px;
+}
+.ds-lead {
+  color: var(--lk-muted);
+  max-width: 70ch;
+}
+.ds-h {
+  margin-bottom: 12px;
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  font-variation-settings: 'wdth' 75;
+}
+.ds-themes {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  .ds-themes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.ds-theme {
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--lk-line);
+  background: var(--lk-canvas);
+  color: var(--lk-ink);
+}
+.ds-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.ds-swatch {
+  display: grid;
+  gap: 1px;
+  font-size: 12px;
+}
+.ds-swatch span {
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--lk-line);
+}
+.ds-swatch code,
+.ds code {
+  font-size: 11px;
+  color: var(--lk-muted);
+}
+.ds-swatch small {
+  color: var(--lk-muted);
+}
+.ds-type {
+  padding: 8px 16px;
+}
+.ds-type-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--lk-line);
+  overflow: hidden;
+}
+.ds-type-row:last-child {
+  border-bottom: 0;
+}
+.ds-type-row small {
+  grid-column: 2;
+  color: var(--lk-muted);
+  font-size: 12px;
+}
+.ds-type-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .ds-type-row {
+    grid-template-columns: 1fr;
+  }
+  .ds-type-row small {
+    grid-column: 1;
+  }
+}
+.ds-two {
+  display: grid;
+  gap: 28px;
+}
+@media (min-width: 900px) {
+  .ds-two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.ds-space {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+.ds-space div {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  align-items: center;
+}
+.ds-space span {
+  height: 14px;
+  border-radius: 3px;
+  background: var(--lk-signal);
+}
+.ds-radius {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.ds-radius div {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+.ds-radius span {
+  height: 64px;
+  border: 2px solid var(--lk-ink);
+  background: var(--lk-surface);
+}
+.ds-comp {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+.ds-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

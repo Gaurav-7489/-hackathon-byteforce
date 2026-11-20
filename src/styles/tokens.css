@@ -1,0 +1,134 @@
+/* ==========================================================================
+   SeatLock design tokens — the single source of truth, rendered live on /design.
+   "Ledger" light theme (paper, ink, signal yellow) and a "Night" dark theme.
+   Text pairs are checked to ≥ 4.5:1 on their intended surface.
+   ========================================================================== */
+:root,
+[data-theme='light'] {
+  /* Typography — one variable family; the width axis gives condensed display type. */
+  --lk-font: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+  --text-display: clamp(2.6rem, 1.6rem + 4.4vw, 4.4rem);
+  --wdth-display: 62;
+  --wdth-ui: 100;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --gutter: clamp(16px, 3vw, 32px);
+  --content-max: 1440px;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --lk-radius: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --radius-seat: 9px 9px 5px 5px;
+
+  /* Motion */
+  --lk-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 160ms;
+  --dur-base: 260ms;
+  --dur-panel: 420ms;
+
+  /* Seat geometry: WCAG 2.5.5 target size on touch */
+  --seat-size: 44px;
+  --seat-gap: 6px;
+
+  /* Ledger (light) */
+  color-scheme: light;
+  --lk-canvas: #eceee7;
+  --lk-surface: #f7f8f4;
+  --lk-elevated: #e2e6dc;
+  --lk-ink: #0f1a14;
+  --lk-muted: #56625a;
+  --lk-line: #d2d8cd;
+  --lk-line-strong: #a6afa2;
+  --lk-signal: #f2b705;
+  --lk-on-signal: #14110a;
+  --lk-gain: #1f7a4a;
+  --lk-coral: #c2452d;
+  --lk-danger: #b4412b;
+  --lk-warn-bg: #f6e7c1;
+  --lk-warn-ink: #5a4300;
+  --lk-danger-bg: #f6ddd6;
+  --lk-danger-ink: #7a2a1a;
+  --lk-ok-bg: #d6ead9;
+  --lk-ok-ink: #17502f;
+  --lk-ai: #5146dd;
+  --lk-ai-bg: #e4e2fb;
+  --lk-glass: rgb(236 238 231 / 0.95);
+  --lk-shadow: 0 1px 0 rgb(15 26 20 / 0.04), 0 18px 40px -24px rgb(15 26 20 / 0.28);
+
+  --seat-free: #f7f8f4;
+  --seat-free-line: #8f9a91;
+  --seat-free-ink: #2c3630;
+  --seat-held: #e26a45;
+  --seat-booked: #5f6862;
+  --seat-booked-ink: #e9ece6;
+  --seat-blocked: #c9cfc5;
+  --seat-mine: #1f9a5b;
+}
+
+:root[data-theme='dark'],
+[data-theme='dark'] {
+  color-scheme: dark;
+  --lk-canvas: #0b100d;
+  --lk-surface: #121a16;
+  --lk-elevated: #1b2620;
+  --lk-ink: #e6ebe2;
+  --lk-muted: #98a49b;
+  --lk-line: #26322b;
+  --lk-line-strong: #3a493f;
+  --lk-signal: #f5c02e;
+  --lk-on-signal: #14110a;
+  --lk-gain: #6fd39a;
+  --lk-coral: #ff8a65;
+  --lk-danger: #ef7a5f;
+  --lk-warn-bg: #3a2f10;
+  --lk-warn-ink: #f6dc8f;
+  --lk-danger-bg: #3d1d16;
+  --lk-danger-ink: #ffc3b4;
+  --lk-ok-bg: #143223;
+  --lk-ok-ink: #a6eac2;
+  --lk-ai: #a49dff;
+  --lk-ai-bg: #25223f;
+  --lk-glass: rgb(11 16 13 / 0.94);
+  --lk-shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 18px 40px -20px rgb(0 0 0 / 0.7);
+
+  --seat-free: #1b2620;
+  --seat-free-line: #6b7a70;
+  --seat-free-ink: #d7ddd4;
+  --seat-held: #ff8a65;
+  --seat-booked: #3f4a43;
+  --seat-booked-ink: #c4ccc6;
+  --seat-blocked: #2a332d;
+  --seat-mine: #3fca7f;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-panel: 0ms;
+  }
+}

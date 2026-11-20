@@ -1,47 +1,79 @@
 import { describe, expect, it } from 'vitest'
-import { LISTINGS, layoutFor, rng, seedStatuses, simulateStep } from '../booking/data'
+import { layoutFor } from '../booking/data'
+import { parseIntent, recommend } from '../lib/api/mock/ai'
+import { seedEvents } from '../lib/api/mock/data'
+import type { Seat } from '../lib/api/types'
+import { isSelectable, neighbour, suggestAlternative } from '../lib/seats'
 
 describe('seat layouts', () => {
-  it('builds the cinema hall with three priced tiers', () => {
+  it('builds the cinema hall with three tiers and unique ids', () => {
     const l = layoutFor('cinema')
     expect(l.seats).toHaveLength(196)
     expect(new Set(l.seats.map((s) => s.tier))).toEqual(new Set(['classic', 'prime', 'recliner']))
-    expect(new Set(l.seats.map((s) => s.id)).size).toBe(l.seats.length)
+    expect(l.index.size).toBe(l.seats.length)
   })
 
-  it('builds the 2+2 coach with a 5-seat rear bench', () => {
+  it('builds the 2+2 coach with window, aisle and a rear bench', () => {
     const l = layoutFor('bus')
     expect(l.seats).toHaveLength(45)
     expect(l.seats.filter((s) => s.tier === 'rear')).toHaveLength(5)
-    expect(l.seats.some((s) => s.tags.includes('Women only'))).toBe(true)
+    expect(l.seats.filter((s) => s.tags.includes('Women only')).length).toBeGreaterThan(0)
   })
+})
 
-  it('maps every seat exactly once in the 2D grid', () => {
-    for (const mode of ['cinema', 'bus'] as const) {
-      const l = layoutFor(mode)
-      const cells = l.grid.flat().filter((i): i is number => i !== null)
-      expect(cells.sort((a, b) => a - b)).toEqual(l.seats.map((_, i) => i))
+describe('seeded catalogue', () => {
+  const { events, seats } = seedEvents()
+  it('has cinema shows and bus trips, all in the future', () => {
+    expect(events.some((e) => e.kind === 'cinema')).toBe(true)
+    expect(events.some((e) => e.kind === 'bus')).toBe(true)
+    expect(events.every((e) => Date.parse(e.startsAt) > Date.now())).toBe(true)
+  })
+  it('gives every event a full seat inventory with blocked seats', () => {
+    for (const e of events) {
+      expect(seats[e.id]).toHaveLength(e.totalSeats)
+      expect(seats[e.id]!.some((s) => s.status === 'blocked')).toBe(true)
     }
   })
 })
 
-describe('live simulation', () => {
-  it('seeds the same statuses for the same show', () => {
-    const l = layoutFor('cinema')
-    const slot = LISTINGS.cinema.slots[0]!
-    expect(seedStatuses(l, slot)).toEqual(seedStatuses(l, slot))
+const S = (id: string, r: number, col: number, status: Seat['status'] = 'available', section = 'prime'): Seat => ({
+  id, row: String.fromCharCode(65 + r), r, number: col + 1, col, section, price: 200, status, isAisle: false, tags: [],
+})
+
+describe('seat rules', () => {
+  const grid = [S('A1', 0, 0), S('A2', 0, 1), S('A3', 0, 3), S('B1', 1, 0), S('B2', 1, 1, 'booked'), S('B3', 1, 3)]
+
+  it('moves across aisles with the arrow keys', () => {
+    expect(neighbour(grid, 'A2', 'right')?.id).toBe('A3')
+    expect(neighbour(grid, 'A1', 'down')?.id).toBe('B1')
+    expect(neighbour(grid, 'A1', 'up')).toBeNull()
   })
 
-  it('never touches the viewer’s own seats', () => {
-    const l = layoutFor('bus')
-    let statuses = seedStatuses(l, LISTINGS.bus.slots[0]!)
-    const mine = new Set(statuses.flatMap((s, i) => (s === 'free' ? [i] : [])).slice(0, 4))
-    const rand = rng(7)
-    for (let t = 0; t < 400; t++) {
-      const step = simulateStep(l, statuses, mine, rand)
-      for (const c of step.changes) expect(mine.has(c.index)).toBe(false)
-      statuses = statuses.slice()
-      for (const c of step.changes) statuses[c.index] = c.status
-    }
+  it('suggests the nearest free seat when one is lost', () => {
+    const lost = grid[4]!
+    expect(suggestAlternative(lost, grid, new Set(['B1']))?.id).toBe('B3')
+  })
+
+  it('treats my own hold as selectable', () => {
+    expect(isSelectable({ ...S('C1', 2, 0, 'held'), heldByMe: true })).toBe(true)
+    expect(isSelectable(S('C2', 2, 1, 'held'))).toBe(false)
+  })
+})
+
+describe('AI assistant (mock endpoint)', () => {
+  it('understands English and Hinglish', () => {
+    expect(parseIntent('2 seats together near the screen under ₹300')).toMatchObject({ count: 2, budget: 300, front: true, together: true })
+    expect(parseIntent('ek khidki wali seat aage')).toMatchObject({ count: 1, window: true, front: true })
+    expect(parseIntent('do sasti seats saath mein')).toMatchObject({ count: 2, cheapest: true, together: true })
+  })
+
+  it('only suggests available seats within the limit', () => {
+    const { events, seats } = seedEvents()
+    const ev = events.find((e) => e.kind === 'bus')!
+    const ctx = seats[ev.id]!.map(({ heldByMe: _h, mine: _m, col: _c, ...s }) => s)
+    const res = recommend({ eventId: ev.id, kind: 'bus', prompt: '2 window seats together', maxSeats: 4, selectedSeatIds: [], seats: ctx, history: [] })
+    expect(res.seatIds.length).toBeLessThanOrEqual(4)
+    for (const id of res.seatIds) expect(ctx.find((s) => s.id === id)?.status).toBe('available')
+    expect(res.reason.length).toBeGreaterThan(5)
   })
 })

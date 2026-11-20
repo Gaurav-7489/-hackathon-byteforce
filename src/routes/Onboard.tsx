@@ -1,12 +1,14 @@
 import { useActionState, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { Mark } from '../booking/Mark'
+import { useLocation, useNavigate } from 'react-router'
 import { BusArt, CinemaArt } from '../booking/ModeArt'
 import type { Mode } from '../booking/data'
+import { ThemeToggle } from '../components/AppLayout'
+import { Icon } from '../components/Icon'
+import { Mark } from '../components/Mark'
+import { SubmitButton } from '../components/SubmitButton'
 import { api, usingMock } from '../lib/api/client'
 import { friendlyMessage, toApiError } from '../lib/api/errors'
 import { useAuth } from '../lib/auth'
-import '../booking/lk.css'
 import './onboard.css'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -34,8 +36,15 @@ let prefetched = false
 function prefetchBooking() {
   if (prefetched) return
   prefetched = true
-  void import('./Book')
-  void import('../booking/Scene3D')
+  void import('./Explore')
+  void import('./EventPage')
+}
+
+function validate(email: string, pw: string): SignInState['fields'] {
+  const fields: SignInState['fields'] = {}
+  if (!EMAIL_RE.test(email)) fields.email = email ? 'That doesn’t look like an email address.' : 'Enter your email.'
+  if (pw.length < 6) fields.password = pw ? 'Passwords are at least 6 characters.' : 'Enter your password.'
+  return fields
 }
 
 interface SignInState {
@@ -77,6 +86,9 @@ function Panel({ mode, step }: { mode: Mode; step: number }) {
 export function Onboard() {
   const { user, signIn } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = (location.state as { from?: string } | null)?.from
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({})
   const [step, setStep] = useState(0)
   const [mode, setMode] = useState<Mode>(() => {
     try {
@@ -94,16 +106,15 @@ export function Onboard() {
     } catch {
       /* storage blocked */
     }
-    void navigate(`/book/${m}`)
+    void navigate(from && from !== '/' ? from : `/explore?kind=${m}`, { replace: true })
   }
 
-  const [state, signInAction, pending] = useActionState<SignInState, FormData>(
+  const [state, signInAction] = useActionState<SignInState, FormData>(
     async (_prev, form) => {
       const e = String(form.get('email') ?? '').trim()
       const pw = String(form.get('password') ?? '')
-      const fields: SignInState['fields'] = {}
-      if (!EMAIL_RE.test(e)) fields.email = e ? 'That doesn’t look like an email address.' : 'Enter your email.'
-      if (pw.length < 6) fields.password = pw ? 'Passwords are at least 6 characters.' : 'Enter your password.'
+      const fields = validate(e, pw)
+      setTouched({ email: true, password: true })
       if (fields.email || fields.password) return { error: null, fields, email: e }
       try {
         const res = await api.login(e, pw)
@@ -118,6 +129,11 @@ export function Onboard() {
     { error: null, fields: {}, email: '' },
   )
 
+  // Inline validation: re-check a field live once the user has left it.
+  const live = validate(email.trim(), password)
+  const emailError = touched.email ? live.email : state.fields.email
+  const passwordError = touched.password ? live.password : state.fields.password
+
   const continueFromMode = (e: React.FormEvent) => {
     e.preventDefault()
     if (user) go(mode)
@@ -125,7 +141,7 @@ export function Onboard() {
   }
 
   return (
-    <main className="lk ob">
+    <main className="ob">
       <title>Sign in · SeatLock</title>
       <meta name="description" content="Choose cinema or bus, sign in and lock the exact seat you want in a live 3D view." />
       <Panel mode={mode} step={step} />
@@ -145,6 +161,7 @@ export function Onboard() {
                 <span key={i} data-state={i < step ? 'done' : i === step ? 'now' : 'todo'} />
               ))}
             </div>
+            <ThemeToggle />
           </div>
 
           {step === 0 ? (
@@ -194,7 +211,8 @@ export function Onboard() {
                 </button>
               </p>
               {state.error && (
-                <p className="ob-alert" role="alert">
+                <p className="alert" data-tone="danger" role="alert" style={{ marginBottom: 16 }}>
+                  <Icon name="alert" size={18} />
                   {state.error}
                 </p>
               )}
@@ -213,12 +231,14 @@ export function Onboard() {
                     placeholder="you@college.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    aria-invalid={state.fields.email ? true : undefined}
-                    aria-describedby={state.fields.email ? 'ob-email-err' : undefined}
+                    onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                    aria-invalid={emailError ? true : undefined}
+                    aria-describedby={emailError ? 'ob-email-err' : undefined}
                   />
-                  {state.fields.email && (
+                  {emailError && (
                     <p id="ob-email-err" className="lk-error">
-                      {state.fields.email}
+                      <Icon name="alert" size={15} />
+                      {emailError}
                     </p>
                   )}
                 </div>
@@ -234,12 +254,14 @@ export function Onboard() {
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={state.fields.password ? true : undefined}
-                    aria-describedby={state.fields.password ? 'ob-pw-err' : undefined}
+                    onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                    aria-invalid={passwordError ? true : undefined}
+                    aria-describedby={passwordError ? 'ob-pw-err' : undefined}
                   />
-                  {state.fields.password && (
+                  {passwordError && (
                     <p id="ob-pw-err" className="lk-error">
-                      {state.fields.password}
+                      <Icon name="alert" size={15} />
+                      {passwordError}
                     </p>
                   )}
                 </div>
@@ -258,9 +280,9 @@ export function Onboard() {
                 </button>
               )}
               <div className="ob-cta">
-                <button type="submit" className="lk-btn lk-btn-primary lk-btn-lg" disabled={pending}>
-                  {pending ? 'Signing in…' : 'Sign in'}
-                </button>
+                <SubmitButton pendingLabel="Signing in…" className="lk-btn lk-btn-primary lk-btn-lg lk-btn-block">
+                  Sign in
+                </SubmitButton>
               </div>
             </form>
           )}

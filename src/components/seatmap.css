@@ -1,0 +1,262 @@
+.seatmap {
+  display: grid;
+  gap: 10px;
+}
+.seatmap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.seatmap-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--lk-elevated);
+}
+.seatmap-scale {
+  min-width: 44px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.seatmap-help {
+  font-size: 12px;
+  color: var(--lk-muted);
+}
+.seatmap-viewport {
+  position: relative;
+  height: clamp(340px, 58vh, 620px);
+  overflow: hidden;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--lk-ink) 9%, transparent) 1px, transparent 0) 0 0 / 18px 18px,
+    var(--lk-canvas);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.seatmap-viewport:active {
+  cursor: grabbing;
+}
+.seatmap-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  padding: 18px 20px 28px;
+  will-change: transform;
+}
+.stage {
+  position: relative;
+  width: calc(var(--cols) * (var(--seat-size) + var(--seat-gap)));
+  margin: 0 auto 26px 34px;
+}
+.stage-svg {
+  width: 100%;
+  height: 56px;
+}
+.stage-label {
+  position: absolute;
+  inset: 22px 0 auto;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--lk-muted);
+}
+.bus-front {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: calc(var(--cols) * (var(--seat-size) + var(--seat-gap)));
+  margin: 0 0 20px 34px;
+  padding: 10px 12px;
+  border: 2px solid var(--lk-ink);
+  border-bottom-width: 0;
+  border-radius: 28px 28px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lk-muted);
+}
+.bus-wheel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bus-door {
+  padding: 2px 8px;
+  border: 1px dashed var(--lk-line-strong);
+  border-radius: 6px;
+}
+.seat-grid {
+  display: grid;
+  gap: var(--seat-gap);
+}
+.seat-row {
+  display: grid;
+  grid-template-columns: 28px repeat(var(--cols), var(--seat-size));
+  gap: var(--seat-gap);
+  align-items: center;
+}
+.seatmap[data-kind='bus'] .seat-row:nth-child(5) {
+  margin-bottom: 10px; /* emergency exit row gap */
+}
+.row-label {
+  grid-column: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lk-muted);
+  text-align: center;
+}
+
+/* --- Seat states: colour + icon + pattern -------------------------------- */
+.seat {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--seat-size);
+  height: var(--seat-size);
+  padding: 0;
+  border-radius: var(--radius-seat);
+  border: 1.5px solid var(--seat-free-line);
+  background: var(--seat-free);
+  color: var(--seat-free-ink);
+  font: 700 12px var(--lk-font);
+  cursor: pointer;
+  transition: transform 120ms, background-color 200ms, border-color 200ms, box-shadow 200ms;
+}
+.seat::before {
+  /* seat back */
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 3px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.18;
+}
+.seat:hover:not([aria-disabled='true']) {
+  transform: translateY(-2px);
+  border-color: var(--lk-ink);
+}
+.seat:focus-visible {
+  outline: 3px solid var(--lk-ink);
+  outline-offset: 2px;
+  z-index: 2;
+}
+.seat[data-tier='recliner'][data-status='available'] {
+  background: color-mix(in srgb, #7b9ad4 22%, var(--seat-free));
+}
+.seat[data-women][data-status='available'] {
+  background: color-mix(in srgb, #e58aa6 28%, var(--seat-free));
+}
+.seat[data-status='selected'] {
+  background: var(--lk-signal);
+  border-color: color-mix(in srgb, var(--lk-signal) 70%, #000);
+  color: var(--lk-on-signal);
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--lk-signal) 80%, transparent);
+  transform: translateY(-2px);
+}
+.seat[data-status='held'] {
+  border-color: var(--seat-held);
+  color: #fff;
+  background: repeating-linear-gradient(-45deg, var(--seat-held) 0 5px, color-mix(in srgb, var(--seat-held) 72%, #000) 5px 9px);
+  cursor: not-allowed;
+}
+.seat[data-status='booked'] {
+  border-color: var(--seat-booked);
+  background: var(--seat-booked);
+  color: var(--seat-booked-ink);
+  cursor: not-allowed;
+}
+.seat[data-mine] {
+  background: var(--seat-mine);
+  border-color: var(--seat-mine);
+  color: #fff;
+}
+.seat[data-status='blocked'] {
+  border-color: var(--lk-line-strong);
+  border-style: dashed;
+  color: var(--lk-muted);
+  background:
+    repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in srgb, var(--lk-ink) 14%, transparent) 4px 5px),
+    repeating-linear-gradient(-45deg, transparent 0 4px, color-mix(in srgb, var(--lk-ink) 14%, transparent) 4px 5px),
+    var(--seat-blocked);
+  cursor: not-allowed;
+}
+.seat[data-ai]:not([data-status='selected']) {
+  box-shadow: 0 0 0 3px var(--lk-ai);
+  animation: seat-ai 1.6s ease-in-out infinite;
+}
+@keyframes seat-ai {
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--lk-ai) 45%, transparent);
+  }
+}
+.seat-ai-dot {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--lk-ai);
+  color: #fff;
+}
+.seat[data-lost] {
+  animation: seat-lost 0.5s ease-in-out 3;
+  box-shadow: 0 0 0 3px var(--lk-danger);
+}
+@keyframes seat-lost {
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+.seat-num {
+  line-height: 1;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--lk-muted);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.seat-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px 6px 4px 4px;
+  cursor: default;
+  transform: none !important;
+  animation: none !important;
+}
+.seat-swatch::before {
+  display: none;
+}
+.seat-swatch[data-ai] {
+  box-shadow: 0 0 0 2px var(--lk-ai);
+}

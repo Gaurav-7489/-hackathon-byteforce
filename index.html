@@ -3,11 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#ECEEE7" />
+    <meta name="theme-color" content="#ECEEE7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0B100D" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="SeatLock — lock the exact cinema or bus seat you want, in a live 3D view." />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <script>
+      // Apply the stored theme before first paint (respects the device setting on first visit).
+      try {
+        var t = localStorage.getItem('seatlock-theme');
+        var d = t === 'dark' || ((!t || t === 'system') && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = d ? 'dark' : 'light';
+      } catch (e) {}
+    </script>
     <title>SeatLock</title>
   </head>
   <body>
