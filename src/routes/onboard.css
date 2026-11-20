@@ -315,10 +315,12 @@
 }
 
 /* Sticky CTA on phones, inline on desktop (same as the reference flow) */
+/* Sticky (not fixed): the sheet is animated with a transform, which made a fixed
+   bar float over the password field on phones. */
 .ob-cta {
-  position: fixed;
-  inset-inline: 0;
+  position: sticky;
   bottom: 0;
+  margin: 24px -20px 0;
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--lk-line);
   background: var(--lk-glass);

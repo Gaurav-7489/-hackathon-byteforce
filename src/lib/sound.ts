@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { isTalking } from './audioFocus'
 
 /**
  * Small synthesised UI sounds (Web Audio, no files to download). Sounds only
@@ -51,6 +52,7 @@ function audio(): AudioContext | null {
 }
 
 function tones(freqs: number[], dur: number, type: OscillatorType, gain: number, gap: number) {
+  if (isTalking()) return // never talk over the voice guide or the assistant
   const c = audio()
   if (!c) return
   const t0 = c.currentTime + 0.01

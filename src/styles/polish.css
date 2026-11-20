@@ -617,3 +617,8 @@
 .browse .tool-row-inline {
   margin-bottom: 20px;
 }
+
+/* Seat state changes animate with plain CSS (cheap) instead of view transitions. */
+.seat {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}

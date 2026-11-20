@@ -1,7 +1,6 @@
 import {
   Activity,
   lazy,
-  startTransition as startGlobalTransition,
   Suspense,
   use,
   useActionState,
@@ -398,8 +397,8 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         setStale(false)
         diffToFeed(lastSeats.current, r.seats)
         lastSeats.current = r.seats
-        // ViewTransition animates seat-state changes on the 2D map.
-        startGlobalTransition(() => setSeats(r.seats))
+        // Plain update: a page-wide view transition on every poll made the map stutter.
+        setSeats(r.seats)
         return r.seats
       })
       .catch(() => {

@@ -1,4 +1,5 @@
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
+import { applyMode } from '../lib/mode'
 import { useLocation, useNavigate } from 'react-router'
 import { BusArt, CinemaArt } from '../booking/ModeArt'
 import type { Mode } from '../booking/data'
@@ -92,6 +93,8 @@ export function Onboard() {
       return 'cinema'
     }
   })
+  // Accent follows the choice right away: yellow for bus, cherry red for cinema.
+  useEffect(() => applyMode(mode), [mode])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 

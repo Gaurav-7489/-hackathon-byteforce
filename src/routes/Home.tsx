@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { Icon } from '../components/Icon'
 import { VenuePhoto } from '../components/Photo'
 import type { Mode } from '../booking/data'
+import { claimAudio, releaseAudio } from '../lib/audioFocus'
 import { setMode } from '../lib/mode'
 import { PHOTO } from '../lib/photos'
 import { useT, type TKey } from '../lib/i18n'
@@ -50,8 +51,12 @@ function VideoRow({ kind, title, body, cta }: { kind: Mode; title: string; body:
     const v = ref.current
     if (!v) return
     v.muted = !soundOn
-    if (soundOn) void v.play().catch(() => {})
-  }, [soundOn])
+    if (soundOn) {
+      // Only one film plays with sound; turning this one on mutes the other and stops speech.
+      claimAudio(`film-${kind}`, () => setSoundOn(false))
+      void v.play().catch(() => {})
+    } else releaseAudio(`film-${kind}`)
+  }, [soundOn, kind])
 
   const toggleSound = () => {
     sfx.tap()

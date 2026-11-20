@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { claimAudio, releaseAudio } from './audioFocus'
 import type { Lang } from './i18n'
 
 /**
@@ -50,6 +51,9 @@ export function speak(text: string, lang: Lang) {
   const voice = voices.find((v) => v.lang === code) ?? voices.find((v) => v.lang.toLowerCase().startsWith(lang))
   if (voice) u.voice = voice
   u.rate = lang === 'hi' ? 0.95 : 1
+  // Speech takes audio focus: a film playing with sound is muted first.
+  claimAudio('speech', () => synth.cancel())
+  u.onend = () => releaseAudio('speech')
   synth.speak(u)
 }
 
