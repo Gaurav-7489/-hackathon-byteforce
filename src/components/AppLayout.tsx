@@ -226,17 +226,129 @@ function DemoMenu() {
   )
 }
 
+/** Profile menu: who is signed in, edit name, tickets, sign out. */
+function AccountMenu() {
+  const { user, signOut, updateUser } = useAuth()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(user?.name ?? '')
+  const [saving, setSaving] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  if (!user) return null
+  const initials = user.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const next = name.trim().replace(/\s+/g, ' ')
+    if (next.length < 2) {
+      toast.error('Name too short', 'Use at least 2 characters.')
+      return
+    }
+    setSaving(true)
+    try {
+      const { api } = await import('../lib/api/client')
+      const updated = await api.updateProfile(next)
+      updateUser(updated)
+      setEditing(false)
+      setOpen(false)
+      toast.success('Name updated', `Tickets will now show “${updated.name}”.`)
+    } catch {
+      toast.error('Couldn’t save your name', 'Check your connection and try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="acct" ref={ref}>
+      <button type="button" className="app-avatar" aria-haspopup="menu" aria-expanded={open} aria-label={`Account: ${user.name}`} onClick={() => setOpen((o) => !o)}>
+        {initials}
+      </button>
+      {open && (
+        <div className="acct-panel lk-card" role="menu" aria-label="Account">
+          <div className="acct-head">
+            <span className="acct-avatar" aria-hidden="true">
+              {initials}
+            </span>
+            <div>
+              <strong>{user.name}</strong>
+              <small>{user.email}</small>
+            </div>
+          </div>
+          {editing ? (
+            <form className="acct-edit" onSubmit={(e) => void save(e)}>
+              <label className="lk-label" htmlFor="acct-name">
+                Your name
+              </label>
+              <input id="acct-name" className="lk-input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" autoFocus />
+              <div className="acct-edit-actions">
+                <button type="submit" className="lk-btn lk-btn-primary lk-btn-sm" disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm" onClick={() => { setEditing(false); setName(user.name) }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button type="button" role="menuitem" className="acct-item" onClick={() => { setName(user.name); setEditing(true) }}>
+              <Icon name="person" size={16} /> Edit name
+            </button>
+          )}
+          <button type="button" role="menuitem" className="acct-item" onClick={() => { setOpen(false); void navigate('/bookings') }}>
+            <Icon name="ticket" size={16} /> My tickets
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="acct-item acct-out"
+            onClick={() => {
+              signOut()
+              toast('Signed out', 'See you soon. Your tickets are saved to your account.')
+              void navigate('/login')
+            }}
+          >
+            <Icon name="logout" size={16} /> Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const NAV = [
   { to: '/', label: 'Home', hi: 'होम', icon: 'grid' as const, end: true },
   { to: '/bookings', label: 'My tickets', hi: 'मेरे टिकट', icon: 'ticket' as const, end: false },
 ]
 
 export function AppLayout() {
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const lang = useLang()
   const hi = lang === 'hi'
   const { pathname } = useLocation()
+  // Connection messages: tell people when they drop offline and when they are back.
+  useEffect(() => {
+    const off = () => toast.warning('You’re offline', 'Saved tickets still open. Booking resumes when you reconnect.')
+    const on = () => toast.success('Back online', 'Seat availability is live again.')
+    window.addEventListener('offline', off)
+    window.addEventListener('online', on)
+    return () => {
+      window.removeEventListener('offline', off)
+      window.removeEventListener('online', on)
+    }
+  }, [])
   // Voice guide: announce each screen when it opens.
   useEffect(() => {
     const l = readLang()
@@ -267,20 +379,7 @@ export function AppLayout() {
             <SoundToggle />
             <LangToggle />
             <ThemeToggle />
-            {user && (
-              <button
-                type="button"
-                className="app-avatar"
-                aria-label={`Sign out ${user.name}`}
-                title={`${user.name} — sign out`}
-                onClick={() => {
-                  signOut()
-                  void navigate('/login')
-                }}
-              >
-                {user.name.slice(0, 1)}
-              </button>
-            )}
+            {user && <AccountMenu />}
           </div>
         </div>
       </header>

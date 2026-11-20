@@ -1,5 +1,6 @@
 export type ApiErrorCode =
   | 'invalid_credentials'
+  | 'email_taken'
   | 'unauthorized'
   | 'conflict'
   | 'hold_expired'

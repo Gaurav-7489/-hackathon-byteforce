@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation, useRouteError } from 'react-router'
 import { AppLayout } from './components/AppLayout'
-import { StatePanel } from './components/StatePanel'
+import { FailurePage } from './components/FailurePage'
 import { AuthProvider, useAuth } from './lib/auth'
 import { DemoProvider } from './lib/demo'
 import { HoldProvider } from './lib/hold'
@@ -16,21 +16,35 @@ function RequireAuth() {
 function RouteError() {
   const error = useRouteError()
   console.error('[SeatLock] route error', error)
+  const msg = error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error'
   return (
-    <div className="container page">
-      <StatePanel
-        icon="alert"
-        tone="error"
-        title="Something went wrong on this page"
-        action={
-          <button type="button" className="lk-btn lk-btn-primary" onClick={() => location.reload()}>
-            Reload
-          </button>
+    <>
+      <title>Something went wrong · SeatLock</title>
+      <FailurePage
+        code="500"
+        title="This screen hit a problem"
+        actions={
+          <>
+            <button type="button" className="lk-btn lk-btn-primary" onClick={() => location.reload()}>
+              Try again
+            </button>
+            <a href="/" className="lk-btn">
+              Go home
+            </a>
+          </>
+        }
+        details={
+          <>
+            <summary>Technical details</summary>
+            <p>
+              <code>{msg}</code>
+            </p>
+          </>
         }
       >
-        An unexpected error stopped this screen from loading. Your bookings are safe.
-      </StatePanel>
-    </div>
+        <p>An unexpected error stopped this page from loading. Your bookings and held seats are safe — try again, or head home.</p>
+      </FailurePage>
+    </>
   )
 }
 
@@ -61,6 +75,7 @@ const router = createBrowserRouter([
           { index: true, lazy: async () => ({ Component: (await import('./routes/Home')).Home }) },
           { path: '/explore', element: <Navigate to="/" replace /> },
           { path: '/book/:kind', lazy: async () => ({ Component: (await import('./routes/Browse')).Browse }) },
+          { path: '/failed', lazy: async () => ({ Component: (await import('./routes/Failed')).Failed }) },
           { path: '/smart', lazy: async () => ({ Component: (await import('./routes/Smart')).Smart }) },
           { path: '/e/:id', lazy: async () => ({ Component: (await import('./routes/EventPage')).EventPage }) },
           { path: '/checkout', lazy: async () => ({ Component: (await import('./routes/Checkout')).Checkout }) },

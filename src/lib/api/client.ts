@@ -10,6 +10,7 @@ import {
   EventsResponseSchema,
   HoldResponseSchema,
   LoginResponseSchema,
+  ProfileResponseSchema,
   SeatsResponseSchema,
   type AiAssistRequest,
   type AiResult,
@@ -87,6 +88,7 @@ async function errorFrom(res: Response): Promise<ApiError> {
     onUnauthorized()
     return new ApiError('unauthorized', message, 401)
   }
+  if (parsed?.code === 'email_taken') return new ApiError('email_taken', message, res.status)
   if (res.status === 409) return new ApiError('conflict', message, 409, parsed?.conflictingSeatIds ?? [])
   if (res.status === 410 || parsed?.code === 'hold_expired') return new ApiError('hold_expired', message, res.status)
   if (res.status === 404) return new ApiError('not_found', message, 404)
@@ -118,6 +120,9 @@ async function request<S extends z.ZodMiniType>(
 export const api = {
   login: (email: string, password: string) =>
     request('POST', '/auth/login', LoginResponseSchema, { body: { email, password } }),
+  register: (name: string, email: string, password: string) =>
+    request('POST', '/auth/register', LoginResponseSchema, { body: { name, email, password } }),
+  updateProfile: (name: string) => request('PATCH', '/me', ProfileResponseSchema, { body: { name } }).then((r) => r.user),
   events: () => request('GET', '/events', EventsResponseSchema).then((r) => r.events),
   event: (id: string) => request('GET', `/events/${encodeURIComponent(id)}`, EventDetailSchema),
   seats: (id: string, signal?: AbortSignal) =>

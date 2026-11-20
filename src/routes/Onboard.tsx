@@ -10,6 +10,8 @@ import { SubmitButton } from '../components/SubmitButton'
 import { api, usingMock } from '../lib/api/client'
 import { friendlyMessage, toApiError } from '../lib/api/errors'
 import { useAuth } from '../lib/auth'
+import { ForgotForm, SignUpForm } from './AuthForms'
+import { toast } from '../lib/toast'
 import './onboard.css'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -95,6 +97,7 @@ export function Onboard() {
   })
   // Accent follows the choice right away: yellow for bus, cherry red for cinema.
   useEffect(() => applyMode(mode), [mode])
+  const [panel, setPanel] = useState<'signin' | 'signup' | 'forgot'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -117,6 +120,7 @@ export function Onboard() {
       try {
         const res = await api.login(e, pw)
         signIn(res.token, res.user)
+        toast.success(`Welcome back, ${res.user.name.split(' ')[0]}!`, `Signed in. Let’s find you a ${mode === 'bus' ? 'bus seat' : 'cinema seat'}.`)
         go(mode)
         return { error: null, fields: {}, email: e }
       } catch (err) {
@@ -199,6 +203,16 @@ export function Onboard() {
                 </button>
               </div>
             </form>
+          ) : panel === 'signup' ? (
+            <SignUpForm
+              onDone={() => go(mode)}
+              onSignIn={(em) => {
+                if (em) setEmail(em)
+                setPanel('signin')
+              }}
+            />
+          ) : panel === 'forgot' ? (
+            <ForgotForm initialEmail={email} onBack={() => setPanel('signin')} />
           ) : (
             <form key="auth" className="lk-enter" action={signInAction} noValidate>
               <h1 className="lk-display ob-title">Sign in to lock seats</h1>
@@ -277,6 +291,17 @@ export function Onboard() {
                   <span className="lk-num">student@seatlock.dev</span>
                 </button>
               )}
+              <p className="ob-switch ob-switch-row">
+                <button type="button" className="ob-link" onClick={() => setPanel('forgot')}>
+                  Forgot password?
+                </button>
+                <span>
+                  New here?{' '}
+                  <button type="button" className="ob-link" onClick={() => setPanel('signup')}>
+                    Create an account
+                  </button>
+                </span>
+              </p>
               <div className="ob-cta">
                 <SubmitButton pendingLabel="Signing in…" className="lk-btn lk-btn-primary lk-btn-lg lk-btn-block">
                   Sign in

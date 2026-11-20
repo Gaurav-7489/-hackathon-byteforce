@@ -160,9 +160,46 @@ function tick(eventId: string) {
   save()
 }
 
-function auth(init: RequestInit) {
-  return new Headers(init.headers).get('authorization') === `Bearer mock-token-${SEEDED_STUDENT.id}`
+/* ------------------------------------------------------------ Accounts */
+// Accounts created with POST /auth/register live in this browser (a stand-in for the organizer's user store).
+interface Account { id: string; name: string; email: string; hash: string; createdAt: string }
+const USERS_KEY = 'seatlock-mock-users'
+type Owned = Booking & { owner?: string }
+
+function accounts(): Account[] {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_KEY) ?? '[]') as Account[]
+  } catch {
+    return []
+  }
 }
+function saveAccounts(list: Account[]) {
+  try {
+    localStorage.setItem(USERS_KEY, JSON.stringify(list))
+  } catch {
+    /* storage blocked */
+  }
+}
+async function hash(pw: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`seatlock:${pw}`))
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+function publicUser(id: string): { id: string; name: string; email: string } | null {
+  if (id === SEEDED_STUDENT.id) {
+    const override = accounts().find((a) => a.id === id)
+    return { id, name: override?.name ?? SEEDED_STUDENT.name, email: SEEDED_STUDENT.email }
+  }
+  const a = accounts().find((x) => x.id === id)
+  return a ? { id: a.id, name: a.name, email: a.email } : null
+}
+
+/** The signed-in user id from the bearer token, or null. */
+function auth(init: RequestInit): string | null {
+  const m = new Headers(init.headers).get('authorization')?.match(/^Bearer mock-token-(.+)$/)
+  const id = m?.[1]
+  return id && publicUser(id) ? id : null
+}
+const ownerOf = (b: Booking) => (b as Owned).owner ?? SEEDED_STUDENT.id
 
 function aiStream(req: AiAssistRequest, signal?: AbortSignal | null): Response {
   const slow = demoControls.aiSlowNext || /\bslow\b/i.test(req.prompt)
@@ -213,14 +250,42 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
 
   if (method === 'POST' && path === '/auth/login') {
     const email = String(body.email ?? '').trim().toLowerCase()
-    if (email !== SEEDED_STUDENT.email || body.password !== SEEDED_STUDENT.password) {
-      return err(401, 'invalid_credentials', 'That email and password don’t match.')
+    const pw = String(body.password ?? '')
+    if (email === SEEDED_STUDENT.email && pw === SEEDED_STUDENT.password) {
+      return json(200, { token: `mock-token-${SEEDED_STUDENT.id}`, user: publicUser(SEEDED_STUDENT.id) })
     }
-    const { password: _pw, ...user } = SEEDED_STUDENT
-    return json(200, { token: `mock-token-${SEEDED_STUDENT.id}`, user })
+    const acct = accounts().find((a) => a.email === email && a.id !== SEEDED_STUDENT.id)
+    if (!acct || acct.hash !== (await hash(pw))) return err(401, 'invalid_credentials', 'That email and password don’t match.')
+    return json(200, { token: `mock-token-${acct.id}`, user: publicUser(acct.id) })
   }
 
-  if (!auth(init)) return err(401, 'unauthorized', 'Please sign in again.')
+  if (method === 'POST' && path === '/auth/register') {
+    const name = String(body.name ?? '').trim().replace(/\s+/g, ' ')
+    const email = String(body.email ?? '').trim().toLowerCase()
+    const pw = String(body.password ?? '')
+    if (name.length < 2) return err(422, 'validation', 'Enter your full name.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err(422, 'validation', 'Enter a valid email address.')
+    if (pw.length < 8 || !/[a-z]/i.test(pw) || !/\d/.test(pw)) return err(422, 'validation', 'Use at least 8 characters with a letter and a number.')
+    const list = accounts()
+    if (email === SEEDED_STUDENT.email || list.some((a) => a.email === email)) return err(409, 'email_taken', 'An account with this email already exists.')
+    const acct: Account = { id: `usr_${Math.random().toString(36).slice(2, 10)}`, name, email, hash: await hash(pw), createdAt: new Date().toISOString() }
+    saveAccounts([...list, acct])
+    return json(201, { token: `mock-token-${acct.id}`, user: publicUser(acct.id) })
+  }
+
+  const uid = auth(init)
+  if (!uid) return err(401, 'unauthorized', 'Please sign in again.')
+
+  if (method === 'PATCH' && path === '/me') {
+    const name = String(body.name ?? '').trim().replace(/\s+/g, ' ')
+    if (name.length < 2 || name.length > 60) return err(422, 'validation', 'Your name should be 2–60 characters.')
+    const list = accounts()
+    const existing = list.find((a) => a.id === uid)
+    if (existing) existing.name = name
+    else list.push({ id: uid, name, email: SEEDED_STUDENT.email, hash: '', createdAt: new Date().toISOString() })
+    saveAccounts(list)
+    return json(200, { user: publicUser(uid) })
+  }
 
   let m: RegExpMatchArray | null
 
@@ -239,7 +304,11 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
     const id = m[1] ?? ''
     if (!d.seats[id]) return err(404, 'not_found', 'We couldn’t find that show or trip.')
     tick(id)
-    return json(200, { eventId: id, seats: d.seats[id], updatedAt: new Date().toISOString() })
+    // "Yours" is per account: holds and bookings of the signed-in user only.
+    const mineIds = new Set(d.bookings.filter((b) => ownerOf(b) === uid && b.eventId === id && b.status === 'confirmed').flatMap((b) => b.seats.map((x) => x.id)))
+    const heldIds = new Set(d.holds.filter((h) => h.userId === uid && h.eventId === id).flatMap((h) => h.seatIds))
+    const seats = (d.seats[id] ?? []).map(({ heldByMe: _h, mine: _m, ...s }) => ({ ...s, ...(heldIds.has(s.id) ? { heldByMe: true } : {}), ...(mineIds.has(s.id) ? { mine: true } : {}) }))
+    return json(200, { eventId: id, seats, updatedAt: new Date().toISOString() })
   }
 
   if (method === 'POST' && (m = path.match(/^\/events\/([^/]+)\/hold$/))) {
@@ -274,7 +343,7 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
       seatIds,
       total: seatIds.reduce((t, sid) => t + (seats.find((s) => s.id === sid)?.price ?? 0), 0),
       expiresAt: new Date(Date.now() + ttl).toISOString(),
-      userId: SEEDED_STUDENT.id,
+      userId: uid,
     }
     for (const s of seats) if (seatIds.includes(s.id)) { s.status = 'held'; s.heldByMe = true }
     d.holds.push(hold)
@@ -284,7 +353,7 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
   }
 
   if (method === 'POST' && (m = path.match(/^\/holds\/([^/]+)\/confirm$/))) {
-    const hold = d.holds.find((h) => h.id === m?.[1])
+    const hold = d.holds.find((h) => h.id === m?.[1] && h.userId === uid)
     if (!hold || Date.parse(hold.expiresAt) <= Date.now()) {
       if (hold) tick(hold.eventId)
       return err(410, 'hold_expired', 'Your 5-minute hold expired and the seats were released.')
@@ -304,16 +373,16 @@ export async function mockFetch(url: string, init: RequestInit = {}): Promise<Re
       status: 'confirmed',
       createdAt: new Date().toISOString(),
     }
-    d.bookings.unshift(booking)
+    d.bookings.unshift({ ...booking, owner: uid } as Owned)
     d.holds = d.holds.filter((h) => h.id !== hold.id)
     save()
     return json(201, { booking })
   }
 
-  if (method === 'GET' && path === '/me/bookings') return json(200, { bookings: d.bookings })
+  if (method === 'GET' && path === '/me/bookings') return json(200, { bookings: d.bookings.filter((b) => ownerOf(b) === uid) })
 
   if (method === 'DELETE' && (m = path.match(/^\/bookings\/([^/]+)$/))) {
-    const booking = d.bookings.find((b) => b.id === m?.[1])
+    const booking = d.bookings.find((b) => b.id === m?.[1] && ownerOf(b) === uid)
     if (!booking) return err(404, 'not_found', 'Booking not found.')
     booking.status = 'cancelled'
     for (const s of d.seats[booking.eventId] ?? []) {

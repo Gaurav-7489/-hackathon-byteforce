@@ -11,6 +11,7 @@ export type User = z.infer<typeof UserSchema>
 
 export const LoginResponseSchema = z.object({ token: z.string(), user: UserSchema })
 export type LoginResponse = z.infer<typeof LoginResponseSchema>
+export const ProfileResponseSchema = z.object({ user: UserSchema })
 
 export const KindSchema = z.enum(['cinema', 'bus'])
 export type Kind = z.infer<typeof KindSchema>

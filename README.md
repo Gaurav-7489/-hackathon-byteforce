@@ -90,6 +90,14 @@ White base everywhere. The venue sets the accent: **bus = white + yellow**, **ci
 
 The home rows play `public/media/bus.mp4` and `public/media/cinema.mp4` side by side (muted until you tap *Sound*). Stills cut from them (`bus.jpg`, `cinema.jpg`) are the venue photos used on cards, headers and sign-in, so no image is loaded from a third-party host.
 
+### Accounts, messages and failure pages
+
+- **Sign up** (`src/routes/AuthForms.tsx`): full name, email, password with a strength meter and show/hide, confirm, terms. Duplicate emails offer “Sign in instead”. **Forgot password** answers the same way for every email (no account enumeration; the demo sends no email).
+- The mock API stores accounts in the browser with SHA-256-hashed passwords (`POST /auth/register`, `POST /auth/login`, `PATCH /me`); each account sees only its own holds and tickets.
+- **Profile menu** (header avatar): name and email, edit name, My tickets, sign out.
+- **Messages**: colour-coded toasts — success green, error red, warning amber, info violet — with an icon and a countdown bar. Shown for sign-in, sign-up, sign-out, name changes, holds, bookings, cancellations, session expiry and going offline/online.
+- **Failure pages**: 404 (`NotFound.tsx`), crash page with technical details (`App.tsx`), booking-failed page `/failed` (no money taken, hold time left, retry), and `public/offline.html`.
+
 ### Photo sources
 
 Bundled in `public/media/photos` under the Unsplash licence (unsplash.com/photos/<id>): hyderabad `1551161242-b5af797b7233`, chennai `1616843413587-9e3a37f7bbd8`, goa `1512343879784-a960bf40e7f2`, mumbai `1570168007204-dfb528c6958f`, northbound `1531366936337-7c912a4589a7`, monsoon `1515694346937-94d85e41e6f0`, kites `1477587458883-47145ed94245`, saffron `1470229722913-7c0e2dbbafd3`, orbit `1446776811953-b23d57bd21aa`, audience `1517604931442-7e0c8ed2963c`, crowd `1501386761578-eac5c94b800a`, aisle `1489599849927-2ee91cede3ba`, screen `1595769816263-9b910be24d5f`, projector `1478720568477-152d9b164e26`, neon `1536440136628-849c177e76a1`, coach `1570125909232-eb263c188f7e`, nightbus `1544620347-c4fd4a3d5957`, aurora `1579033461380-adb47c3eb938`, city `1566552881560-0be862a7c445`, lights `1514525253161-7a46d19cd819`, earth `1451187580459-43490279c0fa`.
