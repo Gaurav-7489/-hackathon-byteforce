@@ -8,6 +8,10 @@
 * {
   margin: 0;
 }
+/* The reset above removed the browser's centring for modal dialogs. */
+dialog {
+  margin: auto;
+}
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;

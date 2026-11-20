@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Mode } from '../booking/data'
 import type { EventSummary } from '../lib/api/types'
-import { PHOTO } from '../lib/photos'
+import { eventPhoto, PHOTO } from '../lib/photos'
 import { Poster } from './Poster'
 
 /** Venue photo for a row or card. Falls back to a brand gradient if it cannot load. */
@@ -15,6 +15,6 @@ export function VenuePhoto({ kind, className }: { kind: Mode; className?: string
 export function EventMedia({ event, className }: { event: Pick<EventSummary, 'id' | 'kind' | 'title' | 'category' | 'poster'>; className?: string }) {
   const [failed, setFailed] = useState(false)
   if (failed) return <Poster event={event} className={className} />
-  const p = PHOTO[event.kind]
+  const p = eventPhoto(event)
   return <img className={`venue-photo ${className ?? ''}`} src={p.src} alt={p.alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />
 }

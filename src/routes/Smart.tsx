@@ -6,6 +6,7 @@ import { FEATURES, type FeatureMeta } from '../features/catalog'
 import { TOOLS } from '../features/tools'
 import { useLang } from '../lib/i18n'
 import { canSpeak, speak, stopSpeaking } from '../lib/speech'
+import { photo } from '../lib/photos'
 import { sfx } from '../lib/sound'
 import './smart.css'
 
@@ -38,13 +39,21 @@ export function Smart() {
         {FEATURES.map((f) => (
           <li key={f.id}>
             <button type="button" className="smart-card" onClick={() => show(f.id)} aria-haspopup="dialog">
-              <span className="smart-n lk-num">{f.n}</span>
-              {f.badge && <span className="smart-badge" data-b={f.badge}>{hi ? (f.badge === 'Priority' ? 'प्राथमिक' : 'ख़ास') : f.badge}</span>}
-              <span className="smart-icon" aria-hidden="true">
-                <Icon name={f.icon} size={22} />
+              <span className="smart-media" aria-hidden="true">
+                <img src={photo(f.photo)} alt="" loading="lazy" decoding="async" />
+                <span className="smart-n lk-num">{f.n}</span>
+                {f.badge && <span className="smart-badge" data-b={f.badge}>{hi ? (f.badge === 'Priority' ? 'प्राथमिक' : 'ख़ास') : f.badge}</span>}
+                <span className="smart-icon">
+                  <Icon name={f.icon} size={20} />
+                </span>
               </span>
-              <strong>{hi ? f.hi.title : f.en.title}</strong>
-              <span className="smart-line">{hi ? f.hi.line : f.en.solution}</span>
+              <span className="smart-text">
+                <strong>{hi ? f.hi.title : f.en.title}</strong>
+                <span className="smart-line">{hi ? f.hi.line : f.en.solution}</span>
+                <span className="smart-open">
+                  {hi ? 'खोलें' : 'Try it'} <Icon name="arrowRight" size={14} />
+                </span>
+              </span>
             </button>
           </li>
         ))}
@@ -65,26 +74,39 @@ function ToolDialog({ f, hi, onClose }: { f: FeatureMeta; hi: boolean; onClose: 
   const said = hi ? `${f.hi.title}. ${f.hi.line}` : `${f.en.title}. ${f.en.problem} ${f.en.solution}`
   return (
     <dialog ref={ref} className="dialog smart-dialog" aria-labelledby="tool-title" onClose={onClose} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="smart-dialog-body">
-        <header className="smart-dialog-head">
-          <span className="smart-n lk-num">{f.n}</span>
-          <h2 id="tool-title">{hi ? f.hi.title : f.en.title}</h2>
+      <header className="smart-hero">
+        <img src={photo(f.photo)} alt="" />
+        <span className="smart-hero-shade" aria-hidden="true" />
+        <div className="smart-hero-actions">
           {canSpeak() && (
-            <button type="button" className="lk-icon-btn" aria-label={hi ? 'सुनें' : 'Listen'} onClick={() => speak(said, hi ? 'hi' : 'en')}>
+            <button type="button" className="smart-hero-btn" aria-label={hi ? 'सुनें' : 'Listen'} onClick={() => speak(said, hi ? 'hi' : 'en')}>
               <Icon name="volume" size={18} />
             </button>
           )}
-          <button type="button" className="lk-icon-btn" aria-label={hi ? 'बंद करें' : 'Close'} onClick={onClose}>
+          <button type="button" className="smart-hero-btn" aria-label={hi ? 'बंद करें' : 'Close'} onClick={onClose}>
             <Icon name="x" size={18} />
           </button>
-        </header>
+        </div>
+        <div className="smart-hero-text">
+          <span className="smart-hero-n lk-num">
+            <Icon name={f.icon} size={16} /> {f.n}
+            {f.badge && <em>{hi ? (f.badge === 'Priority' ? 'प्राथमिक' : 'ख़ास') : f.badge}</em>}
+          </span>
+          <h2 id="tool-title">{hi ? f.hi.title : f.en.title}</h2>
+        </div>
+      </header>
+      <div className="smart-dialog-body">
         <dl className="smart-ps">
-          <div>
-            <dt>{hi ? 'समस्या' : 'Problem'}</dt>
+          <div data-k="problem">
+            <dt>
+              <Icon name="alert" size={14} /> {hi ? 'समस्या' : 'Problem'}
+            </dt>
             <dd>{f.en.problem}</dd>
           </div>
-          <div>
-            <dt>{hi ? 'समाधान' : 'Solution'}</dt>
+          <div data-k="solution">
+            <dt>
+              <Icon name="check" size={14} /> {hi ? 'समाधान' : 'Solution'}
+            </dt>
             <dd>{hi ? f.hi.line : f.en.solution}</dd>
           </div>
         </dl>

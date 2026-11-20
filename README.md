@@ -90,6 +90,14 @@ White base everywhere. The venue sets the accent: **bus = white + yellow**, **ci
 
 The home rows play `public/media/bus.mp4` and `public/media/cinema.mp4` side by side (muted until you tap *Sound*). Stills cut from them (`bus.jpg`, `cinema.jpg`) are the venue photos used on cards, headers and sign-in, so no image is loaded from a third-party host.
 
+### Photo sources
+
+Bundled in `public/media/photos` under the Unsplash licence (unsplash.com/photos/<id>): hyderabad `1551161242-b5af797b7233`, chennai `1616843413587-9e3a37f7bbd8`, goa `1512343879784-a960bf40e7f2`, mumbai `1570168007204-dfb528c6958f`, northbound `1531366936337-7c912a4589a7`, monsoon `1515694346937-94d85e41e6f0`, kites `1477587458883-47145ed94245`, saffron `1470229722913-7c0e2dbbafd3`, orbit `1446776811953-b23d57bd21aa`, audience `1517604931442-7e0c8ed2963c`, crowd `1501386761578-eac5c94b800a`, aisle `1489599849927-2ee91cede3ba`, screen `1595769816263-9b910be24d5f`, projector `1478720568477-152d9b164e26`, neon `1536440136628-849c177e76a1`, coach `1570125909232-eb263c188f7e`, nightbus `1544620347-c4fd4a3d5957`, aurora `1579033461380-adb47c3eb938`, city `1566552881560-0be862a7c445`, lights `1514525253161-7a46d19cd819`, earth `1451187580459-43490279c0fa`.
+
+### Presentation
+
+`docs/SeatLock-Overview.pptx` — 15-slide overview with screenshots, charts (seat tiers, feature effort, bundle sizes) and a reference table of routes and files.
+
 ### Smart tools (all 20 features)
 
 `/smart` lists the 20 features (`src/features/catalog.ts`, English + Hindi). Each card opens a working tool (`src/features/tools.tsx`) built on the real events, seats and bookings: buddy seating, FairQueue, accessibility matching, AutoRescue, navigation, verified exchange, predictive waitlist, budget planner, QuietZone, SafeExit, conflict detector, group split, AI matchmaker, SeatView preview, no-show recovery, crowd heatmap, offline vault, opportunity pass, companion requests and the digital-twin view. Where a feature needs organizer systems (queue tokens, gate counts, check-ins, certificates) the tool simulates that data in the browser and says so. Deep link: `/smart?f=buddy`.

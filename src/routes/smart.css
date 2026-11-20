@@ -14,90 +14,205 @@
   width: 100%;
   height: 100%;
   display: grid;
-  align-content: start;
-  gap: 8px;
+  grid-template-rows: auto 1fr;
   text-align: left;
-  padding: 18px;
+  padding: 0;
+  overflow: hidden;
   border-radius: var(--lk-radius);
   border: 1px solid var(--lk-line);
   background: var(--lk-surface);
   color: var(--lk-ink);
   cursor: pointer;
-  transition: border-color var(--dur-fast), transform var(--dur-fast) var(--lk-ease), box-shadow var(--dur-fast);
+  transition: border-color var(--dur-fast), transform var(--dur-base) var(--lk-ease), box-shadow var(--dur-base);
 }
-.smart-card:hover {
+.smart-card:hover,
+.smart-card:focus-visible {
   border-color: var(--lk-ink);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--lk-shadow);
 }
-.smart-card strong {
-  font-size: var(--text-lg);
-  line-height: 1.2;
+.smart-media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--lk-elevated);
+}
+.smart-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s var(--lk-ease);
+}
+.smart-card:hover .smart-media img {
+  transform: scale(1.06);
+}
+.smart-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.55), transparent 55%);
 }
 .smart-n {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  bottom: 10px;
   font-weight: 800;
-  color: var(--lk-muted);
-  font-size: var(--text-sm);
+  font-size: var(--text-xl);
+  color: #fff;
 }
 .smart-badge {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  z-index: 1;
+  top: 10px;
+  right: 10px;
   font-size: 11px;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: var(--radius-pill);
-  background: var(--lk-accent-soft);
-  color: var(--lk-ink);
+  background: #fff;
+  color: #111613;
 }
 .smart-badge[data-b='Standout'] {
   background: var(--lk-signal);
   color: var(--lk-on-signal);
 }
 .smart-icon {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  bottom: 10px;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
-  background: var(--lk-accent-soft);
-  color: var(--lk-ink);
+  background: rgb(255 255 255 / 0.92);
+  color: #111613;
+}
+.smart-text {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+.smart-text strong {
+  font-size: var(--text-lg);
+  line-height: 1.2;
 }
 .smart-line {
   color: var(--lk-muted);
   font-size: var(--text-sm);
 }
+.smart-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
 
 .smart-dialog {
-  width: min(680px, calc(100vw - 24px));
+  width: min(760px, calc(100vw - 24px));
   max-height: calc(100dvh - 24px);
   padding: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+}
+.smart-dialog p {
+  color: inherit;
+}
+.smart-hero {
+  position: relative;
+  height: clamp(150px, 26vh, 220px);
+  overflow: hidden;
+  color: #fff;
+}
+.smart-hero img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.smart-hero-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0.1) 70%);
+}
+.smart-hero-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+.smart-hero-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: rgb(255 255 255 / 0.92);
+  color: #111613;
+  cursor: pointer;
+}
+.smart-hero-text {
+  position: absolute;
+  left: clamp(16px, 3vw, 28px);
+  right: clamp(16px, 3vw, 28px);
+  bottom: 16px;
+}
+.smart-hero-n {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: var(--text-sm);
+}
+.smart-hero-n em {
+  font-style: normal;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--lk-signal);
+  color: var(--lk-on-signal);
+}
+.smart-hero h2 {
+  margin: 4px 0 0;
+  color: #fff;
+  font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem);
+  font-variation-settings: 'wdth' 70;
+  font-weight: 800;
 }
 .smart-dialog-body {
   padding: clamp(16px, 3vw, 28px);
   display: grid;
-  gap: 16px;
-}
-.smart-dialog-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.smart-dialog-head h2 {
-  flex: 1;
-  font-size: var(--text-xl);
+  gap: 18px;
 }
 .smart-ps {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 10px;
   margin: 0;
-  padding: 14px 16px;
-  border-radius: var(--radius-sm);
-  background: var(--lk-elevated);
   font-size: var(--text-sm);
 }
+.smart-ps > div {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--lk-elevated);
+  border-left: 4px solid var(--lk-line-strong);
+}
+.smart-ps > div[data-k='solution'] {
+  border-left-color: var(--lk-signal);
+  background: var(--lk-accent-soft);
+}
 .smart-ps dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -105,7 +220,7 @@
   color: var(--lk-muted);
 }
 .smart-ps dd {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
 }
 
 /* Shared tool parts */
@@ -550,4 +665,8 @@
 .twin-grid span[data-s='blocked'] {
   background: var(--lk-line-strong);
   opacity: 0.6;
+}
+.tool-map,
+.tool-view {
+  max-height: 260px;
 }
