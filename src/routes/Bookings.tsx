@@ -21,7 +21,6 @@ export function Bookings() {
     <div className="container page-pad">
       <title>My bookings · SeatLock</title>
       <header className="page-head">
-        <p className="eyebrow">Ticket wallet</p>
         <h1>My bookings</h1>
       </header>
       <ErrorBoundary key={attempt} section="your bookings" onReset={() => { invalidate('bookings'); setAttempt((a) => a + 1) }}>
@@ -65,7 +64,7 @@ function Wallet({ promise }: { promise: Promise<Booking[]> }) {
         const updated = await api.cancelBooking(b.id)
         startTransition(() => setBookings((cur) => cur.map((x) => (x.id === updated.id ? updated : x))))
         invalidate('events')
-        toast.success('Booking cancelled', { description: `${b.event.title} · seats ${b.seats.map((s) => s.id).join(', ')} released.` })
+        toast.success('Booking cancelled', { description: `Seats ${b.seats.map((s) => s.id).join(', ')} for ${b.event.title} are available to other students again.` })
       } catch (e) {
         toast.error('Couldn’t cancel booking', { description: `${friendlyMessage(e)} Your ticket is still valid.` })
       }
@@ -127,8 +126,8 @@ function WalletCard({ booking: b, onCancel }: { booking: Booking; onCancel?: () 
           <h2 className="wallet-title">{b.event.title}</h2>
           {cancelled && <span className="badge badge-muted">Cancelled</span>}
         </div>
-        <p className="wallet-meta">{dateLong(b.event.startsAt)} · {time(b.event.startsAt)} · {b.event.venue}</p>
-        <p className="wallet-meta">Seats <strong>{b.seats.map((s) => s.id).join(', ')}</strong> · {money(b.total)} · <span className="mono">{b.id}</span></p>
+        <p className="wallet-meta">{dateLong(b.event.startsAt)} at {time(b.event.startsAt)}, {b.event.venue}</p>
+        <p className="wallet-meta">Seats <strong>{b.seats.map((s) => s.id).join(', ')}</strong>, {money(b.total)}. Booking <span className="num">{b.id}</span></p>
       </div>
       {onCancel && (
         <div className="wallet-actions">

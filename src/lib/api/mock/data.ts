@@ -29,7 +29,7 @@ type Seed = Omit<EventDetail, 'seatsLeft' | 'totalSeats' | 'priceFrom' | 'priceT
 
 const SEEDS: Seed[] = [
   {
-    id: 'neon-monsoon', title: 'Neon Monsoon', subtitle: 'Indie night · 4 campus bands', category: 'Music',
+    id: 'neon-monsoon', title: 'Neon Monsoon', subtitle: 'Indie night with 4 campus bands', category: 'Music',
     venue: 'Open Air Theatre', day: 0, hour: 19, basePrice: 300, demand: 0.55, durationMinutes: 180,
     organizer: 'Music Society', lineup: ['Paper Kites Club', 'Velvet Static', 'Monsoon Theory', 'The 3 AM Library'],
     description: 'Four student bands, one rain-soaked stage. Expect reverb, string lights and a closing set that ends under the stars.',
@@ -57,7 +57,7 @@ const SEEDS: Seed[] = [
     poster: { hue: 150, accent: 80, motif: 'bars' },
   },
   {
-    id: 'retro-orchestra', title: 'Retro Bollywood Orchestra', subtitle: '60 musicians · golden-era hits', category: 'Music',
+    id: 'retro-orchestra', title: 'Retro Bollywood Orchestra', subtitle: '60 musicians, golden-era hits', category: 'Music',
     venue: 'Main Auditorium', day: 9, hour: 18, basePrice: 250, demand: 0.6, durationMinutes: 160,
     organizer: 'Cultural Committee', lineup: ['Campus Symphony', 'Guest vocalists'],
     description: 'A 60-piece student orchestra reimagines classics from the golden era of Hindi film music.',

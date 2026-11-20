@@ -255,7 +255,7 @@ export function SeatMap({ seats, selected, suggested, lost, onToggle, focusSeatI
           <button type="button" className="icon-btn" onClick={() => zoomTo(view.current.s * 1.25)} disabled={scale >= MAX_S - 0.01} aria-label="Zoom in"><Icon name="zoomIn" /></button>
           <button type="button" className="icon-btn" onClick={() => reset()} aria-label="Reset map view"><Icon name="expand" /></button>
         </div>
-        <p className="seatmap-help">Drag or pinch to move · arrow keys to browse · Space to select</p>
+        <p className="seatmap-help">Drag or pinch to move the map. With a keyboard, use the arrow keys and press Space to pick a seat.</p>
       </div>
 
       <div

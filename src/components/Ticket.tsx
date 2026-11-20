@@ -67,13 +67,13 @@ export function Ticket({ booking, reveal = true }: { booking: Booking; reveal?: 
           <dl className="ticket-grid">
             <div><dt>Date</dt><dd>{weekday} {day} {month}</dd></div>
             <div><dt>Doors</dt><dd>{time(booking.event.startsAt)}</dd></div>
-            <div><dt>Seats</dt><dd>{booking.seats.map((s) => s.id).join(' · ')}</dd></div>
+            <div><dt>Seats</dt><dd>{booking.seats.map((s) => s.id).join(', ')}</dd></div>
             <div><dt>Paid</dt><dd>{money(booking.total)}</dd></div>
           </dl>
         </div>
         <div className="ticket-stub">
           <QrPlaceholder seed={booking.id} />
-          <span className="ticket-id mono">{booking.id}</span>
+          <span className="ticket-id num">{booking.id}</span>
         </div>
         <span className="ticket-shine" aria-hidden="true" />
       </motion.article>

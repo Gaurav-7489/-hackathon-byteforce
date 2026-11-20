@@ -37,9 +37,7 @@
 .ticket-brand {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: 0.3em;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
+  font-size: var(--text-sm);
   color: #d5ff73;
 }
 .ticket .badge-ok {
@@ -67,9 +65,8 @@
   margin: var(--space-5) 0 0;
 }
 .ticket-grid dt {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  font-weight: 500;
   color: #9eabbd;
 }
 .ticket-grid dd {
@@ -95,7 +92,7 @@
 .ticket-id {
   font-size: var(--text-sm);
   color: #c7cfdb;
-  letter-spacing: 0.08em;
+  font-weight: 600;
 }
 .ticket-shine {
   position: absolute;

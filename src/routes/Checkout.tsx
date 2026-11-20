@@ -1,6 +1,5 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Icon } from '../components/Icon'
@@ -12,7 +11,6 @@ import { api } from '../lib/api/client'
 import { friendlyMessage, toApiError } from '../lib/api/errors'
 import { dateLong, money, rupees, time } from '../lib/format'
 import { useHold } from '../lib/hold'
-import { fadeUp, stagger } from '../lib/motion'
 import { invalidate } from '../lib/resource'
 import './checkout.css'
 
@@ -89,8 +87,8 @@ export function Checkout() {
       <title>{`Checkout ${mmss(remaining)} · SeatLock`}</title>
       <Link to={`/events/${event.id}`} state={{ reselect: hold.seatIds }} className="back-link"><Icon name="arrowLeft" size={18} /> Back to seat map</Link>
 
-      <motion.div className="checkout-grid" variants={stagger(0.06)} initial="hidden" animate="show">
-        <motion.section variants={fadeUp} className="timer card" data-warning={warning || undefined} aria-labelledby="timer-title">
+      <div className="checkout-grid">
+        <section className="timer card" data-warning={warning || undefined} aria-labelledby="timer-title">
           <div className="timer-ring" role="timer" aria-live="off" aria-label={`Hold expires in ${mmss(remaining)}`}>
             <svg viewBox="0 0 120 120" aria-hidden="true">
               <circle cx="60" cy="60" r={R} className="timer-track" />
@@ -106,23 +104,23 @@ export function Checkout() {
           </div>
           {/* Announce only at meaningful moments, not every second. */}
           <p className="sr-only" aria-live="assertive">{warning ? 'Warning: less than one minute left on your hold.' : ''}</p>
-        </motion.section>
+        </section>
 
-        <motion.section variants={fadeUp} className="order card" aria-labelledby="order-title">
+        <section className="order card" aria-labelledby="order-title">
           <div className="order-event">
             <div className="order-poster"><Poster event={event} /></div>
             <div>
               <h1 id="order-title" className="order-title">{event.title}</h1>
-              <p className="order-meta">{dateLong(event.startsAt)} · {time(event.startsAt)} · {event.venue}</p>
+              <p className="order-meta">{dateLong(event.startsAt)} at {time(event.startsAt)}, {event.venue}</p>
             </div>
           </div>
 
-          <h2 className="eyebrow order-label">Selected seats</h2>
+          <h2 className="order-label">Your seats</h2>
           <ul className="order-seats">
             {seats.map((s) => (
               <li key={s.id} className="order-seat">
                 <span className="order-seat-id">{s.id}</span>
-                <span className="order-seat-meta">Row {s.row}, seat {s.number} · {s.section} block{s.isAisle ? ' · aisle' : ''}</span>
+                <span className="order-seat-meta">Row {s.row}, seat {s.number}, {s.section} block{s.isAisle ? ', aisle' : ''}</span>
                 <span className="num">{money(s.price)}</span>
               </li>
             ))}
@@ -142,12 +140,12 @@ export function Checkout() {
               </div>
             )}
             <SubmitButton pendingLabel="Confirming booking…" disabled={expired}>
-              {state.error ? <><Icon name="refresh" size={18} /> Retry confirm</> : <>Confirm booking · {rupees(subtotal + fee)}</>}
+              {state.error ? <><Icon name="refresh" size={18} /> Retry confirm</> : <>Confirm booking for {rupees(subtotal + fee)}</>}
             </SubmitButton>
-            <button type="button" className="btn btn-ghost btn-block" onClick={() => setCancelOpen(true)}>Cancel and release seats</button>
+            <button type="button" className="btn btn-ghost btn-block" onClick={() => setCancelOpen(true)}>Release seats</button>
           </form>
-        </motion.section>
-      </motion.div>
+        </section>
+      </div>
 
       <ConfirmDialog
         open={cancelOpen}
@@ -158,7 +156,7 @@ export function Checkout() {
         cancelLabel="Keep my hold"
         onConfirm={() => {
           setCancelOpen(false)
-          toast('Hold cancelled', { description: 'Your seats were released.' })
+          toast('Seats released', { description: `${hold.seatIds.join(', ')} are available to other students again.` })
           void Promise.resolve(navigate(`/events/${event.id}`, { replace: true })).then(() => setActive(null))
         }}
       />

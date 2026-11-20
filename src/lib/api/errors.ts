@@ -45,9 +45,9 @@ export function friendlyMessage(err: unknown): string {
   const e = toApiError(err)
   switch (e.code) {
     case 'server_error':
-      return 'The booking server hiccuped. This happens under heavy load — please retry.'
+      return 'The booking server didn’t respond. Try again.'
     case 'network':
-      return 'You appear to be offline or the server is unreachable.'
+      return 'You’re offline or the server can’t be reached. Check your connection and try again.'
     case 'timeout':
       return 'The server took too long to respond.'
     default:

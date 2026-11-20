@@ -28,7 +28,7 @@ export function DemoControls() {
       <AnimatePresence>
         {open && (
           <motion.div id="demo-panel" className="demo-panel glass" role="region" aria-label="Demo controls" initial={{ opacity: 0, y: 12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.96 }} transition={spring.soft}>
-            <p className="eyebrow">Simulate the rush (mock API)</p>
+            <p className="demo-title">Simulate the rush (mock API)</p>
             <button type="button" className="btn btn-block" onClick={() => {
               const target = demoBridge.selected[0]
               if (!demoBridge.eventId || !target) { toast.error('Select a seat on a seat map first'); return }

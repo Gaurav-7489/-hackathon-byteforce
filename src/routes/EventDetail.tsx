@@ -73,11 +73,11 @@ function EventHeader({ event }: { event: EventSummary | EventDetail }) {
         <div className="detail-poster"><Poster event={event} /></div>
       </ViewTransition>
       <div className="detail-copy">
-        <p className="eyebrow">{event.category}{detail ? ` · ${detail.organizer}` : ''}</p>
+        <p className="detail-kind">{event.category}{detail ? `, hosted by ${detail.organizer}` : ''}</p>
         <h1 className="detail-title">{event.title}</h1>
         <p className="detail-sub">{event.subtitle}</p>
         <ul className="detail-facts">
-          <li><Icon name="calendar" size={16} /> {dateLong(event.startsAt)} · {time(event.startsAt)}</li>
+          <li><Icon name="calendar" size={16} /> {dateLong(event.startsAt)} at {time(event.startsAt)}</li>
           <li><Icon name="pin" size={16} /> {event.venue}</li>
           <li><Icon name="ticket" size={16} /> {money(event.priceFrom)}–{money(event.priceTo)}</li>
         </ul>
@@ -346,7 +346,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         </div>
       )}
       <SubmitButton pendingLabel="Holding seats…" disabled={optimisticSelected.length === 0} className="btn btn-lime btn-lg btn-block">
-        {holdState.error ? <><Icon name="refresh" size={18} /> Retry hold</> : <>Hold {optimisticSelected.length || ''} seat{optimisticSelected.length === 1 ? '' : 's'} <Icon name="arrowRight" size={18} /></>}
+        {holdState.error ? <><Icon name="refresh" size={18} /> Retry hold</> : <>Hold {optimisticSelected.length || ''} seat{optimisticSelected.length === 1 ? '' : 's'}</>}
       </SubmitButton>
     </form>
   )
@@ -380,7 +380,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                       const alt = conflict.alternatives[s.id]
                       return alt ? (
                         <button key={s.id} type="button" className="btn btn-primary" onClick={() => swapIn(s.id, alt)} disabled={selected.length >= MAX_SEATS}>
-                          Swap in {alt.id} · {money(alt.price)}
+                          Swap in {alt.id} ({money(alt.price)})
                         </button>
                       ) : null
                     })}
@@ -419,7 +419,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                 <ViewTransition key={s.id} enter="summary-enter" exit="summary-enter">
                   <li className="summary-seat">
                     <span className="summary-seat-id">{s.id}</span>
-                    <span className="summary-seat-meta">Row {s.row} · {s.section}{s.isAisle ? ' · aisle' : ''}</span>
+                    <span className="summary-seat-meta">Row {s.row}, {s.section}{s.isAisle ? ', aisle' : ''}</span>
                     <span className="num">{money(s.price)}</span>
                     <button type="button" className="icon-btn summary-remove" aria-label={`Remove ${s.id}`} onClick={() => toggleSeat(s)}><Icon name="x" size={14} /></button>
                   </li>

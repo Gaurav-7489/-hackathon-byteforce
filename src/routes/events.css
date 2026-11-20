@@ -38,14 +38,25 @@
   gap: var(--space-5);
 }
 .hero-title {
+  display: grid;
   font-size: var(--text-display);
   line-height: 0.9;
   letter-spacing: -0.05em;
   font-weight: 700;
-  max-width: 11ch;
+}
+/* Raked seating: each line is a row, the next row steps back and up the rake. */
+.hero-line {
   display: flex;
-  flex-wrap: wrap;
   column-gap: 0.22em;
+  white-space: nowrap;
+}
+.hero-line + .hero-line {
+  padding-left: 1.15em;
+}
+@media (max-width: 640px) {
+  .hero-line + .hero-line {
+    padding-left: 0.6em;
+  }
 }
 .hero-word-mask {
   display: inline-block;
@@ -56,16 +67,6 @@
 .hero-word {
   display: inline-block;
   will-change: transform;
-}
-.hero-word.is-accent {
-  background: linear-gradient(100deg, var(--brand-text) 10%, var(--ice) 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.hero-title .hero-word-mask:nth-child(2)::after {
-  content: '';
-  flex-basis: 100%;
 }
 .hero-lede {
   max-width: 46ch;
@@ -78,6 +79,16 @@
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
+.featured-kicker {
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--warning);
+}
+.event-card-kind {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-2);
+}
 .hero-scroll {
   position: absolute;
   right: var(--gutter);
@@ -85,9 +96,7 @@
   display: grid;
   justify-items: center;
   gap: var(--space-2);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  font-size: var(--text-sm);
   color: var(--text-2);
   text-decoration: none;
 }
@@ -104,7 +113,17 @@
   100% { transform: scaleY(1); opacity: 0; }
 }
 @media (max-width: 640px) {
-  .hero-scroll { display: none; }
+  .featured-kicker {
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--warning);
+}
+.event-card-kind {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.hero-scroll { display: none; }
 }
 
 /* Chapter 2 — discover */

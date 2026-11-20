@@ -9,7 +9,7 @@ import { SEEDED_STUDENT, seedEvents, seedPastBookings } from './data'
  * and other students holding/booking seats in the background.
  */
 
-const STORAGE_KEY = 'seatlock-mock-db-v2'
+const STORAGE_KEY = 'seatlock-mock-db-v3'
 const HOLD_MS = 5 * 60_000
 
 interface OtherHold { seatId: string; until: number; outcome: 'booked' | 'available' }

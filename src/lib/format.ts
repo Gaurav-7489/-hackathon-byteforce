@@ -13,7 +13,7 @@ export const dayParts = (iso: string) => {
   const d = new Date(iso)
   return {
     day: d.toLocaleDateString('en-IN', { day: '2-digit' }),
-    month: d.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase(),
+    month: d.toLocaleDateString('en-IN', { month: 'short' }),
     weekday: d.toLocaleDateString('en-IN', { weekday: 'short' }),
   }
 }

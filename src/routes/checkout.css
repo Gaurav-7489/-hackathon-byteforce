@@ -118,6 +118,10 @@
 }
 .order-label {
   margin-bottom: calc(var(--space-2) * -1);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-2);
 }
 .order-seats {
   display: grid;

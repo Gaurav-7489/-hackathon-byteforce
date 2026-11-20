@@ -3,7 +3,6 @@ import { Link } from 'react-router'
 import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import type { EventSummary } from '../lib/api/types'
 import { dayParts, money, relativeDay, time } from '../lib/format'
-import { fadeUp } from '../lib/motion'
 import { summaryCache } from '../lib/eventCache'
 import { useFinePointer, useReducedMotion } from '../hooks/useMediaQuery'
 import { Icon } from './Icon'
@@ -33,7 +32,6 @@ export function EventCard({ event }: { event: EventSummary }) {
   return (
     <motion.article
       className="event-card"
-      variants={fadeUp}
       style={tilt ? { rotateX: rx, rotateY: ry, ['--gx' as string]: glowX, ['--gy' as string]: glowY } : undefined}
       onPointerMove={onMove}
       onPointerLeave={() => { px.set(0.5); py.set(0.5) }}
@@ -57,16 +55,16 @@ export function EventCard({ event }: { event: EventSummary }) {
           </span>
         </div>
         <div className="event-card-body">
-          <p className="eyebrow">{event.category} · {relativeDay(event.startsAt)}</p>
+          <p className="event-card-kind">{event.category}</p>
           <h3 className="event-card-title">{event.title}</h3>
           <p className="event-card-sub">{event.subtitle}</p>
           <dl className="event-card-meta">
-            <div><dt className="sr-only">When</dt><dd><Icon name="clock" size={16} />{time(event.startsAt)}</dd></div>
+            <div><dt className="sr-only">When</dt><dd><Icon name="clock" size={16} />{relativeDay(event.startsAt)}, {time(event.startsAt)}</dd></div>
             <div><dt className="sr-only">Venue</dt><dd><Icon name="pin" size={16} />{event.venue}</dd></div>
           </dl>
           <div className="event-card-foot">
             <span className="event-card-price"><span className="sr-only">Price </span>{event.priceFrom === event.priceTo ? money(event.priceFrom) : <>from <strong>{money(event.priceFrom)}</strong></>}</span>
-            <span className="event-card-cta" aria-hidden="true">Seats <Icon name="arrowRight" size={16} /></span>
+            <span className="event-card-cta" aria-hidden="true">Choose seats</span>
           </div>
         </div>
       </Link>

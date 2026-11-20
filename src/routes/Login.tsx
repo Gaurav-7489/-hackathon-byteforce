@@ -90,11 +90,11 @@ export function Login() {
       </div>
 
       <motion.div className="login-panel" variants={stagger(0.06)} initial="hidden" animate="show">
-        <motion.p variants={fadeUp} className="eyebrow">Student sign in</motion.p>
         <motion.h1 variants={fadeUp} className="login-title">
-          Your moment.<br /><span>Your seat.</span>
+          <span className="login-line">Your moment.</span>
+          <span className="login-line">Your seat.</span>
         </motion.h1>
-        <motion.p variants={fadeUp} className="login-sub">Live seat maps, five-minute holds, and an assistant that finds the good seats — you stay in control.</motion.p>
+        <motion.p variants={fadeUp} className="login-sub">Sign in with your college email to book seats for campus events.</motion.p>
 
         <motion.form variants={fadeUp} action={formAction} noValidate className="login-form">
           {state.error && (
@@ -131,12 +131,12 @@ export function Login() {
             </div>
             {passwordError && <p id="password-error" className="field-error"><Icon name="alert" size={16} />{passwordError}</p>}
           </div>
-          <SubmitButton pendingLabel="Signing in…">Sign in <Icon name="arrowRight" size={18} /></SubmitButton>
+          <SubmitButton pendingLabel="Signing in…">Sign in</SubmitButton>
         </motion.form>
 
         {usingMock && (
           <motion.p variants={fadeUp} className="login-hint">
-            Demo student: <span className="mono">student@seatlock.dev</span> / <span className="mono">seatlock123</span>
+            Demo account: student@seatlock.dev, password seatlock123
           </motion.p>
         )}
       </motion.div>

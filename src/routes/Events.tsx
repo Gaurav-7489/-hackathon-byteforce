@@ -1,6 +1,6 @@
 import { lazy, Suspense, use, useRef, useState, useTransition, type PointerEvent } from 'react'
 import { Link } from 'react-router'
-import { motion } from 'motion/react'
+import { motion } from 'motion/react' // filter pill only
 import { useGSAP } from '@gsap/react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -17,7 +17,6 @@ import { api } from '../lib/api/client'
 import type { EventSummary } from '../lib/api/types'
 import { summaryCache } from '../lib/eventCache'
 import { dateLong, money, relativeDay, time } from '../lib/format'
-import { stagger } from '../lib/motion'
 import { invalidate, resource } from '../lib/resource'
 import { StageFallback } from '../three/StageFallback'
 import { sceneStore, setPointer } from '../three/sceneStore'
@@ -96,9 +95,6 @@ export function Events() {
       })
       gsap.to('.hero-copy', { yPercent: -18, opacity: 0.2, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } })
 
-      gsap.utils.toArray<HTMLElement>('.reveal').forEach((el) => {
-        gsap.from(el, { y: 40, opacity: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 85%' } })
-      })
     },
     { scope: root, dependencies: [reduced] },
   )
@@ -126,21 +122,23 @@ export function Events() {
       {/* Chapter 1 — Arrival */}
       <section className="hero" aria-labelledby="hero-title">
         <div className="container hero-copy">
-          <p className="eyebrow hero-fade">Live seat booking · Campus events</p>
+          {/* Two lines set like raked seating: the second row steps back. */}
           <h1 id="hero-title" className="hero-title" aria-label="Your moment. Your seat.">
-            {words.map((w, i) => (
-              <span key={i} className="hero-word-mask" aria-hidden="true">
-                <span className={`hero-word ${i % 2 ? 'is-accent' : ''}`}>{w}</span>
+            {[words.slice(0, 2), words.slice(2)].map((line, l) => (
+              <span key={l} className="hero-line" aria-hidden="true">
+                {line.map((w, i) => (
+                  <span key={i} className="hero-word-mask"><span className="hero-word">{w}</span></span>
+                ))}
               </span>
             ))}
           </h1>
           <p className="hero-lede hero-fade">Watch seats change in real time, hold up to four for five minutes, and let the AI assistant find the good ones.</p>
           <div className="hero-ctas hero-fade">
             <MagneticLink href="#discover" className="btn btn-primary btn-lg">
-              Find events <Icon name="arrowRight" size={18} />
+              Find an event
             </MagneticLink>
             <MagneticLink href="#featured" className="btn btn-ghost btn-lg glass">
-              <Icon name="sparkle" size={18} /> Tonight’s headliner
+              See what’s selling fastest
             </MagneticLink>
           </div>
         </div>
@@ -153,10 +151,7 @@ export function Events() {
       <section id="discover" className="discover" aria-labelledby="discover-title">
         <div className="container">
           <div className="discover-head">
-            <div>
-              <p className="eyebrow">Chapter 02 — Discover</p>
-              <h2 id="discover-title" className="section-title">What’s on</h2>
-            </div>
+            <h2 id="discover-title" className="section-title">What’s on</h2>
             <div className="discover-tools" role="search">
               <label className="search">
                 <Icon name="search" size={18} />
@@ -252,17 +247,9 @@ function EventGrid({ promise, query, filter, picked, pending, onClear }: {
           Try another date or a broader search.
         </StatePanel>
       ) : (
-        <motion.div
-          className="event-grid"
-          style={{ opacity: pending ? 0.6 : 1 }}
-          variants={stagger(0.06)}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.05 }}
-          key={`${filter}-${picked}-${q}`}
-        >
+        <div className="event-grid" style={{ opacity: pending ? 0.6 : 1 }}>
           {visible.map((e) => <EventCard key={e.id} event={e} />)}
-        </motion.div>
+        </div>
       )}
     </>
   )
@@ -317,18 +304,18 @@ function Featured({ promise }: { promise: Promise<EventSummary[]> }) {
     <div className="featured-pin">
       <div className="container featured-grid">
         <div className="featured-copy">
-          <p className="eyebrow featured-kicker">Chapter 03 — Headliner · selling fastest</p>
+          <p className="featured-kicker">Selling fastest right now</p>
           <h2 id="featured-title" className="featured-title">{featured.title}</h2>
           <p className="featured-detail featured-sub">{featured.subtitle}</p>
           <ul className="featured-facts featured-detail">
-            <li><Icon name="calendar" size={16} /> {relativeDay(featured.startsAt)} · {dateLong(featured.startsAt)}, {time(featured.startsAt)}</li>
+            <li><Icon name="calendar" size={16} /> {relativeDay(featured.startsAt)}, {dateLong(featured.startsAt)} at {time(featured.startsAt)}</li>
             <li><Icon name="pin" size={16} /> {featured.venue}</li>
-            <li><Icon name="seat" size={16} /> {featured.seatsLeft} of {featured.totalSeats} seats left · from {money(featured.priceFrom)}</li>
+            <li><Icon name="seat" size={16} /> {featured.seatsLeft} of {featured.totalSeats} seats left, from {money(featured.priceFrom)}</li>
           </ul>
           {/* Chapter 4 — Enter booking */}
           <div className="featured-detail featured-ctas">
             <Link to={`/events/${featured.id}`} className="btn btn-lime btn-lg" onClick={() => summaryCache.set(featured.id, featured)}>
-              Choose your seat <Icon name="arrowRight" size={18} />
+              Choose seats for {featured.title}
             </Link>
           </div>
         </div>

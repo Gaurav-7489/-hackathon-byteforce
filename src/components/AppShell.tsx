@@ -73,7 +73,7 @@ export function AppShell() {
       </main>
       <footer className="site-footer">
         <div className="container site-footer-inner">
-          <span>© SeatLock · built for campus rushes</span>
+          <span>© 2026 SeatLock. Seat booking for campus events.</span>
           <span className="site-footer-links">
             <NavLink to="/design">Design tokens</NavLink>
             {usingMock && <span className="badge badge-muted">Mock API mode</span>}

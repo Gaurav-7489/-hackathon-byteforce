@@ -23,6 +23,11 @@
   gap: var(--space-2);
   align-content: center;
 }
+.detail-kind {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-2);
+}
 .detail-title {
   font-size: clamp(2.25rem, 1.2rem + 3.6vw, 4rem);
   line-height: 0.98;

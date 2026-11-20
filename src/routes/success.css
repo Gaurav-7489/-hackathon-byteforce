@@ -19,6 +19,10 @@
   color: var(--on-lime);
   box-shadow: 0 0 0 10px color-mix(in srgb, var(--lime) 18%, transparent), 0 0 60px color-mix(in srgb, var(--lime) 40%, transparent);
 }
+.success-status {
+  font-weight: 600;
+  color: var(--text-2);
+}
 .success-title {
   font-size: var(--text-display);
   line-height: 0.92;
