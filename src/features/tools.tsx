@@ -10,6 +10,7 @@ import { resource } from '../lib/resource'
 import { isSelectable, tierLabel } from '../lib/seats'
 import { sfx } from '../lib/sound'
 import { toast } from '../lib/toast'
+import { setToolHighlight, useToolEvent } from '../lib/toolBridge'
 
 /* ------------------------------------------------------------ shared bits */
 
@@ -127,11 +128,18 @@ async function copy(text: string, ok: string) {
   }
 }
 
+/** The show the tool was opened from (seat page), if any. */
+function useHereEvent(): EventSummary | null {
+  const here = useToolEvent()
+  const events = useEvents()
+  return here ? (events.find((e) => e.id === here) ?? null) : null
+}
+
 /* -------------------------------------------------------- 01 Buddy seating */
 
 function Buddy() {
   const events = useEvents()
-  const [eventId, setEventId] = useState(firstId(events))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events))
   const [size, setSize] = useState(3)
   const [each, setEach] = useState(400)
   const seats = useSeats(eventId)
@@ -149,6 +157,11 @@ function Buddy() {
       if (group.length) break
     }
   }
+  const groupKey = group.map((x) => x.id).join()
+  // Light the group up in the 3D view beside the panel.
+  useEffect(() => {
+    setToolHighlight(groupKey ? { eventId, seatIds: groupKey.split(','), focusId: groupKey.split(',')[0], label: `${size} seats together` } : null)
+  }, [eventId, groupKey, size])
   return (
     <div className="tool">
       <div className="tool-row">
@@ -188,7 +201,7 @@ function Buddy() {
 
 function FairQueue() {
   const events = useEvents()
-  const [eventId, setEventId] = useState(firstId(events))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events))
   const [token, setToken] = useState<string | null>(null)
   const [pos, setPos] = useState(0)
   const [turnLeft, setTurnLeft] = useState(120)
@@ -243,7 +256,7 @@ function FairQueue() {
 
 function Access() {
   const events = useEvents()
-  const [eventId, setEventId] = useState(firstId(events, 'cinema'))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events, 'cinema'))
   const [prefs, setPrefs] = useState({ wheel: true, companion: true, aisle: false, calm: false })
   const seats = useSeats(eventId)
   const event = events.find((e) => e.id === eventId)
@@ -261,6 +274,10 @@ function Access() {
     .sort((a, b) => b.score - a.score)
     .slice(0, 4)
   const toggle = (k: keyof typeof prefs) => setPrefs({ ...prefs, [k]: !prefs[k] })
+  const accessKey = scored.map((x) => x.s.id).join()
+  useEffect(() => {
+    setToolHighlight(accessKey ? { eventId, seatIds: accessKey.split(','), focusId: accessKey.split(',')[0], label: 'Recommended accessible seats' } : null)
+  }, [eventId, accessKey])
   return (
     <div className="tool">
       <EventPicker events={events} value={eventId} onChange={setEventId} />
@@ -303,7 +320,7 @@ function Access() {
 
 function Rescue() {
   const events = useEvents()
-  const [eventId, setEventId] = useState(firstId(events))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events))
   const seats = useSeats(eventId)
   const [pick, setPick] = useState('')
   const [lost, setLost] = useState(false)
@@ -317,6 +334,15 @@ function Rescue() {
         .sort((a, b) => a.d - b.d)
         .slice(0, 3)
     : []
+  const altKey = alts.map((a) => a.s.id).join()
+  useEffect(() => {
+    if (!chosen) return setToolHighlight(null)
+    setToolHighlight(
+      lost
+        ? { eventId, seatIds: altKey.split(','), focusId: altKey.split(',')[0], label: `Backup seats for ${chosen.id}` }
+        : { eventId, seatIds: [chosen.id], focusId: chosen.id, label: `Your seat ${chosen.id}` },
+    )
+  }, [eventId, chosen?.id, lost, altKey])
   return (
     <div className="tool">
       <div className="tool-row">
@@ -354,7 +380,7 @@ function Rescue() {
 
 function NavTool() {
   const events = useEvents()
-  const [eventId, setEventId] = useState(firstId(events))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events))
   const event = events.find((e) => e.id === eventId)
   if (!event) return null
   const h = hash(event.id)
@@ -525,7 +551,8 @@ function Budget() {
 /* -------------------------------------------------------- 09 QuietZone */
 
 function Quiet() {
-  const [kind, setKind] = useState<Kind>('cinema')
+  const hereEvent = useHereEvent()
+  const [kind, setKind] = useState<Kind>(hereEvent?.kind ?? 'cinema')
   const layout = layoutFor(kind)
   const rows = layout.rowLabels.map((label, r) => {
     // Cinema: speakers at the front and side exits are busiest. Bus: the engine is at the back.
@@ -533,6 +560,12 @@ function Quiet() {
     return { label, db }
   })
   const quietest = [...rows].sort((a, b) => a.db - b.db).slice(0, 3).map((r) => r.label)
+  const quietKey = quietest.join()
+  useEffect(() => {
+    if (!hereEvent || hereEvent.kind !== kind) return setToolHighlight(null)
+    const ids = layout.seats.filter((x) => quietKey.split(',').includes(layout.rowLabels[x.row]!)).map((x) => x.id)
+    setToolHighlight({ eventId: hereEvent.id, seatIds: ids, label: `Quietest rows: ${quietKey.replace(/,/g, ', ')}`, camera: 'top' })
+  }, [hereEvent?.id, hereEvent?.kind, kind, quietKey, layout])
   return (
     <div className="tool">
       <div className="seg" role="tablist" aria-label="Venue">
@@ -564,7 +597,8 @@ function Quiet() {
 /* -------------------------------------------------------- 10 SafeExit */
 
 function SafeExit() {
-  const [kind, setKind] = useState<Kind>('cinema')
+  const hereEvent = useHereEvent()
+  const [kind, setKind] = useState<Kind>(hereEvent?.kind ?? 'cinema')
   const layout = layoutFor(kind)
   const [row, setRow] = useState(layout.rowLabels[0]!)
   const r = Math.max(0, layout.rowLabels.indexOf(row))
@@ -579,6 +613,11 @@ function SafeExit() {
         : r <= 7
           ? 'Emergency door on the right, by row 5'
           : 'Rear emergency window (break with the red hammer)'
+  useEffect(() => {
+    if (!hereEvent || hereEvent.kind !== kind) return setToolHighlight(null)
+    const ids = layout.seats.filter((x) => x.row === r).map((x) => x.id)
+    setToolHighlight({ eventId: hereEvent.id, seatIds: ids, focusId: ids[Math.floor(ids.length / 2)], label: `Row ${row} → ${exit.split(' (')[0]}`, camera: 'top' })
+  }, [hereEvent?.id, hereEvent?.kind, kind, r, row, exit, layout])
   return (
     <div className="tool">
       <div className="tool-row">
@@ -816,6 +855,7 @@ function Match() {
 /* -------------------------------------------------------- 14 SeatView */
 
 function SeatView() {
+  const hereEvent = useHereEvent()
   const layout = layoutFor('cinema')
   const [row, setRow] = useState('G')
   const [side, setSide] = useState<'left' | 'centre' | 'right'>('centre')
@@ -826,6 +866,13 @@ function SeatView() {
   const offset = side === 'centre' ? 0 : side === 'left' ? -1 : 1
   const verdict = angle > 50 ? 'Very close — you will turn your head' : angle >= 30 ? 'Ideal — the screen fills your view' : 'Comfortable, a little far'
   const screenW = Math.min(300, angle * 5)
+  // Fly the 3D camera to this seat so the real view sits next to the estimate.
+  const rowSeats = layout.seats.filter((x) => x.row === r).sort((a, b) => a.col - b.col)
+  const pickSeat = side === 'left' ? rowSeats[1] : side === 'right' ? rowSeats[rowSeats.length - 2] : rowSeats[Math.floor(rowSeats.length / 2)]
+  useEffect(() => {
+    if (!hereEvent || hereEvent.kind !== 'cinema' || !pickSeat) return setToolHighlight(null)
+    setToolHighlight({ eventId: hereEvent.id, seatIds: [pickSeat.id], focusId: pickSeat.id, label: `View from ${pickSeat.id}`, camera: 'seat' })
+  }, [hereEvent?.id, hereEvent?.kind, pickSeat?.id])
   return (
     <div className="tool">
       <div className="tool-row">
@@ -1058,7 +1105,7 @@ const BUDDIES = [
 function Companion() {
   const events = useEvents()
   const [optIn, setOptIn] = usePersisted('seatlock-companion', false)
-  const [eventId, setEventId] = useState(firstId(events))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events))
   const [sent, setSent] = useState<number[]>([])
   return (
     <div className="tool">
@@ -1099,7 +1146,7 @@ function Companion() {
 
 function Twin() {
   const events = useEvents()
-  const [eventId, setEventId] = useState(firstId(events))
+  const [eventId, setEventId] = useState(useToolEvent() ?? firstId(events))
   const [boost, setBoost] = useState(0)
   const seats = useSeats(eventId, 4000)
   const event = events.find((e) => e.id === eventId)

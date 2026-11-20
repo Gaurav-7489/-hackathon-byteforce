@@ -910,3 +910,53 @@
   cursor: pointer;
   font-weight: 600;
 }
+
+/* Tool open beside the seat page: the page shrinks into the left half so the 3D stays fully visible. */
+@media (min-width: 901px) {
+  body.tool-docked .ep {
+    margin-left: 12px;
+    max-width: calc(100vw - min(560px, 46vw) - 36px);
+    transition: max-width 0.3s var(--lk-ease);
+  }
+  body.tool-docked .ep .ep-grid {
+    grid-template-columns: 1fr;
+  }
+  body.tool-docked .ep .ep-side {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  body.tool-docked .ep {
+    padding-bottom: 54dvh;
+  }
+}
+.ep-tool-badge {
+  position: absolute;
+  left: 12px;
+  bottom: 60px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #5146dd;
+  color: #fff;
+  box-shadow: 0 10px 24px -12px rgb(81 70 221 / 0.8);
+  animation: toast-in 0.3s var(--lk-ease) both;
+}
+.ep-tool-badge span {
+  display: grid;
+  line-height: 1.2;
+}
+.ep-tool-badge small {
+  opacity: 0.85;
+}
+@media (max-width: 900px) {
+  /* Above the bottom sheet, under the drag hint. */
+  .ep-tool-badge {
+    top: 48px;
+    bottom: auto;
+  }
+}
