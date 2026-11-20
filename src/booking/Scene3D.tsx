@@ -33,7 +33,7 @@ import {
 } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Seat } from '../lib/api/types'
-import { hash, type Layout } from './data'
+import { hash, type Layout, type Mode } from './data'
 
 export type View = 'overview' | 'top' | 'seat'
 
@@ -46,6 +46,8 @@ export interface SceneProps {
   view: View
   focusId: string | null
   people: boolean
+  /** Easy 3D: no scenery or people, just the seats on a plain floor with the screen. */
+  simple?: boolean
   screenTitle: string
   onPick: (seatId: string) => void
   onHover: (seatId: string | null, x: number, y: number) => void
@@ -732,8 +734,33 @@ function Bus({ layout }: { layout: Layout }) {
   )
 }
 
-/* ------------------------------------------------------------------- Canvas */
+/* ------------------------------------------------------------- Easy view */
 
+function SimpleStage({ mode }: { mode: Mode }) {
+  return (
+    <group>
+      <color attach="background" args={['#f4f5f2']} />
+      <ambientLight intensity={1.05} />
+      <directionalLight position={[6, 14, 8]} intensity={1.1} />
+      <directionalLight position={[-8, 6, -4]} intensity={0.35} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, 0]}>
+        <planeGeometry args={[40, 40]} />
+        <meshLambertMaterial color="#f3f4f0" />
+      </mesh>
+      {mode === 'cinema' ? (
+        <mesh position={[0, 1.7, -5.3]}>
+          <boxGeometry args={[9, 2.6, 0.15]} />
+          <meshLambertMaterial color="#1d1f22" />
+        </mesh>
+      ) : (
+        <mesh position={[0, 0.7, -4.5]}>
+          <boxGeometry args={[2.6, 1.3, 0.1]} />
+          <meshLambertMaterial color="#bcd9e8" />
+        </mesh>
+      )}
+    </group>
+  )
+}
 
 /* ------------------------------------------------------------------- Canvas */
 
@@ -750,7 +777,13 @@ export default function Scene3D(props: SceneProps) {
       style={{ touchAction: 'none' }}
       aria-hidden="true"
     >
-      {props.layout.mode === 'cinema' ? <Cinema layout={props.layout} title={props.screenTitle} /> : <Bus layout={props.layout} />}
+      {props.simple ? (
+        <SimpleStage mode={props.layout.mode} />
+      ) : props.layout.mode === 'cinema' ? (
+        <Cinema layout={props.layout} title={props.screenTitle} />
+      ) : (
+        <Bus layout={props.layout} />
+      )}
       <Seats {...props} ctrl={ctrl} />
       <Rig layout={props.layout} view={props.view} focus={focus} ctrl={ctrl} />
     </Canvas>

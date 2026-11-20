@@ -4,7 +4,7 @@ import type { EventSummary } from '../lib/api/types'
 import { summaryCache } from '../lib/eventCache'
 import { money, relativeDay, time } from '../lib/format'
 import { Icon } from './Icon'
-import { Poster } from './Poster'
+import { EventMedia } from './Photo'
 
 export function EventCard({ event }: { event: EventSummary }) {
   const left = event.seatsLeft / event.totalSeats
@@ -21,7 +21,7 @@ export function EventCard({ event }: { event: EventSummary }) {
         <div className="ev-media">
           {/* ViewTransition: the poster morphs into the detail page header. */}
           <ViewTransition name={`poster-${event.id}`} share="poster-morph">
-            <Poster event={event} className="ev-poster" />
+            <EventMedia event={event} className="ev-poster" />
           </ViewTransition>
           <span className="ev-kind" aria-hidden="true">
             <Icon name={event.kind === 'bus' ? 'bus' : 'film'} size={14} />

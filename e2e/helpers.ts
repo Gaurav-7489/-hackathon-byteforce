@@ -13,7 +13,7 @@ export async function login(page: Page, mode: 'Cinema' | 'Bus' = 'Cinema') {
   await page.getByLabel('College email').fill('student@seatlock.dev')
   await page.getByLabel('Password', { exact: true }).fill('seatlock123')
   await page.getByRole('button', { name: /sign in/i }).click()
-  await expect(page).toHaveURL(new RegExp(`/explore\\?kind=${mode.toLowerCase()}`))
+  await expect(page).toHaveURL(new RegExp(`/book/${mode.toLowerCase()}`))
 }
 
 export async function openFirst(page: Page) {

@@ -76,7 +76,7 @@ export function Checkout() {
           icon="ticket"
           title="No seats on hold"
           action={
-            <Link className="lk-btn lk-btn-primary" to="/explore">
+            <Link className="lk-btn lk-btn-primary" to="/">
               Find a show or trip
             </Link>
           }

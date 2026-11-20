@@ -36,7 +36,7 @@ let prefetched = false
 function prefetchBooking() {
   if (prefetched) return
   prefetched = true
-  void import('./Explore')
+  void import('./Browse')
   void import('./EventPage')
 }
 
@@ -106,7 +106,7 @@ export function Onboard() {
     } catch {
       /* storage blocked */
     }
-    void navigate(from && from !== '/' ? from : `/explore?kind=${m}`, { replace: true })
+    void navigate(from && from !== '/' ? from : `/book/${m}`, { replace: true })
   }
 
   const [state, signInAction] = useActionState<SignInState, FormData>(

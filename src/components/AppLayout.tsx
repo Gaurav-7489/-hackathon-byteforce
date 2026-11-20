@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../lib/auth'
 import { useDemo } from '../lib/demo'
+import { useBackendLog } from '../lib/backendLog'
+import { setLang, useLang } from '../lib/i18n'
+import { setSound, sfx, useSoundOn } from '../lib/sound'
 import { useTheme } from '../lib/theme'
 import { toast } from '../lib/toast'
 import { Icon } from './Icon'
@@ -12,15 +15,47 @@ import './layout.css'
 export function ThemeToggle() {
   const { resolved, toggle } = useTheme()
   return (
-    <button type="button" className="lk-icon-btn" onClick={toggle} aria-label={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title="Toggle theme">
+    <button type="button" className="lk-icon-btn theme-btn" onClick={toggle} aria-label={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title="Theme">
       <Icon name={resolved === 'dark' ? 'sun' : 'moon'} size={19} />
     </button>
   )
 }
 
-/** Presenter panel: live crowd, people in 3D, network and one-shot edge cases. */
+export function LangToggle() {
+  const lang = useLang()
+  return (
+    <button type="button" className="lang-toggle" onClick={() => setLang(lang === 'en' ? 'hi' : 'en')} aria-label={lang === 'en' ? 'Switch to Hindi' : 'Switch to English'} title="Language">
+      {lang === 'en' ? 'हिं' : 'EN'}
+    </button>
+  )
+}
+
+export function SoundToggle() {
+  const on = useSoundOn()
+  return (
+    <button
+      type="button"
+      className="lk-icon-btn"
+      aria-pressed={on}
+      aria-label={on ? 'Turn sound off' : 'Turn sound on'}
+      title="Sound effects"
+      onClick={() => {
+        setSound(!on)
+        if (!on) sfx.tap()
+      }}
+    >
+      <Icon name={on ? 'volume' : 'mute'} size={19} />
+    </button>
+  )
+}
+
+/**
+ * Presenter panel for the demo. Turning the live crowd on also opens the
+ * backend log, so you can see every organizer-API request as it happens.
+ */
 function DemoMenu() {
   const demo = useDemo()
+  const log = useBackendLog()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -53,7 +88,12 @@ function DemoMenu() {
         className="demo-pill"
         data-on={demo.live || undefined}
         aria-pressed={demo.live}
-        onClick={() => demo.set({ live: !demo.live })}
+        aria-expanded={open}
+        aria-controls="demo-panel"
+        onClick={() => {
+          demo.set({ live: !demo.live })
+          setOpen(true)
+        }}
         title="Other people keep booking seats while you watch"
       >
         <span className="demo-led" aria-hidden="true" />
@@ -65,6 +105,22 @@ function DemoMenu() {
       </button>
       {open && (
         <div id="demo-panel" className="demo-panel lk-card" role="group" aria-label="Demo settings">
+          <p className="lk-eyebrow">Backend</p>
+          <p className="demo-api">
+            Organizer API (mock) · {demo.fast ? 'fast' : '2–3 s'} responses · {demo.failures ? '1 in 20 fails' : 'no failures'}
+          </p>
+          <ol className="demo-log" aria-label="Recent requests" aria-live="off">
+            {log.length === 0 && <li className="demo-log-empty">Requests appear here as you browse.</li>}
+            {log.slice(0, 8).map((e) => (
+              <li key={e.id} data-status={e.status === 'network' || e.status >= 400 ? 'error' : 'ok'}>
+                <span className="demo-method">{e.method}</span>
+                <span className="demo-path">{e.path}</span>
+                <span className="demo-status lk-num">{e.status}</span>
+                <span className="demo-ms lk-num">{e.ms} ms</span>
+              </li>
+            ))}
+          </ol>
+
           <p className="lk-eyebrow">Demo data</p>
           <label className="switch">
             <input type="checkbox" checked={demo.live} onChange={(e) => demo.set({ live: e.target.checked })} />
@@ -123,33 +179,37 @@ function DemoMenu() {
 }
 
 const NAV = [
-  { to: '/explore', label: 'Explore', icon: 'search' as const },
-  { to: '/bookings', label: 'My tickets', icon: 'ticket' as const },
-  { to: '/design', label: 'Design', icon: 'palette' as const },
+  { to: '/', label: 'Home', key: 'nav.home', icon: 'grid' as const, end: true },
+  { to: '/bookings', label: 'My tickets', key: 'nav.tickets', icon: 'ticket' as const, end: false },
 ]
 
 export function AppLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const lang = useLang()
+  const hi = lang === 'hi'
+  const label = (en: string, h: string) => (hi ? h : en)
   return (
     <>
       <a href="#main" className="skip-link">
-        Skip to content
+        {label('Skip to content', 'मुख्य सामग्री पर जाएँ')}
       </a>
       <header className="app-top">
         <div className="app-top-inner">
-          <Link to="/explore" aria-label="SeatLock home" className="app-brand">
+          <Link to="/" aria-label="SeatLock home" className="app-brand">
             <Mark />
           </Link>
           <nav aria-label="Primary" className="app-nav">
             {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to}>
-                {n.label}
+              <NavLink key={n.to} to={n.to} end={n.end}>
+                {label(n.label, n.key === 'nav.home' ? 'होम' : 'मेरे टिकट')}
               </NavLink>
             ))}
           </nav>
           <div className="app-actions">
             <DemoMenu />
+            <SoundToggle />
+            <LangToggle />
             <ThemeToggle />
             {user && (
               <button
@@ -173,9 +233,9 @@ export function AppLayout() {
       </main>
       <nav aria-label="Primary" className="app-tabbar">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to}>
+          <NavLink key={n.to} to={n.to} end={n.end}>
             <Icon name={n.icon} size={20} />
-            <span>{n.label}</span>
+            <span>{label(n.label, n.key === 'nav.home' ? 'होम' : 'मेरे टिकट')}</span>
           </NavLink>
         ))}
       </nav>

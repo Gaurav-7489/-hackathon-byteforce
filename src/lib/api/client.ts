@@ -1,5 +1,6 @@
 import type * as z from 'zod/mini'
 import { ApiError, toApiError } from './errors'
+import { logBackend } from '../backendLog'
 import {
   AiStreamChunkSchema,
   BookingResponseSchema,
@@ -60,9 +61,14 @@ async function send(method: string, path: string, body?: unknown, signal?: Abort
   const init: RequestInit = { method, headers }
   if (body !== undefined) init.body = JSON.stringify(body)
   if (signal) init.signal = signal
+  const started = performance.now()
+  const label = path.split('?')[0]!
   try {
-    return await transport(path, init)
+    const res = await transport(path, init)
+    logBackend({ method, path: label, status: res.status, ms: Math.round(performance.now() - started) })
+    return res
   } catch (e) {
+    logBackend({ method, path: label, status: 'network', ms: Math.round(performance.now() - started) })
     throw toApiError(e)
   }
 }

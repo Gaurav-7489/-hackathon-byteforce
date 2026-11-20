@@ -72,7 +72,7 @@ test('AI assistant suggests seats but never selects them on its own', async ({ p
   await login(page)
   await openFirst(page)
   await page.getByRole('button', { name: 'Best view' }).click()
-  await expect(page.getByText('AI-generated')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('button', { name: /Use these seats/ })).toBeVisible({ timeout: 10_000 })
   await expect(page.locator('.ep-lines li')).toHaveCount(0)
   await page.getByRole('button', { name: 'Use these seats' }).click()
   await expect(page.locator('.ep-lines li')).not.toHaveCount(0)

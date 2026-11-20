@@ -14,21 +14,24 @@ import {
   ViewTransition,
 } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import { layoutFor } from '../booking/data'
+import { layoutFor, type Layout } from '../booking/data'
 import type { View } from '../booking/Scene3D'
 import { AiAssistant, validateSuggestion, type Suggestion } from '../components/AiAssistant'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Icon } from '../components/Icon'
-import { Poster } from '../components/Poster'
+import { EventMedia } from '../components/Photo'
 import { SeatLegend, SeatMap } from '../components/SeatMap'
 import { SubmitButton } from '../components/SubmitButton'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { api } from '../lib/api/client'
 import { friendlyMessage, toApiError } from '../lib/api/errors'
-import type { EventDetail, EventSummary, Seat, SeatsResponse } from '../lib/api/types'
+import type { Booking, EventDetail, EventSummary, Kind, Seat, SeatsResponse } from '../lib/api/types'
 import { useDemo } from '../lib/demo'
 import { summaryCache } from '../lib/eventCache'
 import { dateLong, money, rupees, time } from '../lib/format'
+import { useT } from '../lib/i18n'
+import { setMode as applyEventMode } from '../lib/mode'
+import { sfx } from '../lib/sound'
 import { useHold } from '../lib/hold'
 import { invalidate, resource } from '../lib/resource'
 import { isSelectable, MAX_SEATS, STATUS_LABEL, suggestAlternative, tierLabel, totalFor } from '../lib/seats'
@@ -61,13 +64,14 @@ export function EventPage() {
   const eventPromise = resource(`event:${id}`, () => api.event(id))
   const seatsPromise = resource(`seats:${id}:${mountKey}:${attempt}`, () => api.seats(id))
   const kind = summary?.kind ?? 'cinema'
+  useEffect(() => applyEventMode(kind), [kind])
 
   return (
     <div className="container page ep">
       <title>{`${summary?.title ?? 'Choose seats'} · SeatLock`}</title>
       <meta name="description" content={summary ? `${summary.title} — ${summary.venue}. Pick your seat live in 3D.` : 'Pick your seat live on SeatLock.'} />
-      <Link to={`/explore${summary ? `?kind=${kind}` : ''}`} className="ep-back">
-        <Icon name="arrowLeft" size={18} /> All {summary ? (kind === 'bus' ? 'trips' : 'shows') : 'shows & trips'}
+      <Link to={`/book/${kind}`} className="ep-back">
+        <Icon name="arrowLeft" size={18} /> {kind === 'bus' ? 'All trips' : 'All shows'}
       </Link>
 
       <ErrorBoundary section="this listing" compact onReset={() => invalidate(`event:${id}`)}>
@@ -110,7 +114,7 @@ function EventHero({ event }: { event: EventSummary | EventDetail }) {
     <header className="ep-hero">
       <ViewTransition name={`poster-${event.id}`} share="poster-morph">
         <div className="ep-poster">
-          <Poster event={event} />
+          <EventMedia event={event} />
         </div>
       </ViewTransition>
       <div className="ep-copy">
@@ -221,6 +225,7 @@ interface FeedItem {
 }
 const NAMES = ['Aarav', 'Diya', 'Kabir', 'Meera', 'Rohan', 'Isha', 'Vikram', 'Ananya', 'Arjun', 'Sara', 'Neel', 'Tara', 'Zoya', 'Dev']
 
+type ViewMode = '3d' | 'easy' | 'map'
 type SelectAction = { type: 'add' | 'remove'; id: string } | { type: 'replace'; ids: string[] }
 function reduceSelection(cur: string[], a: SelectAction): string[] {
   switch (a.type) {
@@ -240,6 +245,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const location = useLocation()
   const { active, setActive } = useHold()
   const demo = useDemo()
+  const t = useT()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const coarse = useMediaQuery('(pointer: coarse)')
   const layout = layoutFor(event.kind)
@@ -264,13 +270,14 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const [limitHit, setLimitHit] = useState(false)
   const [focusSeat, setFocusSeat] = useState<string | null>(null)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [budget, setBudget] = useState('')
+  const [clash, setClash] = useState<string | null>(null)
   const [expiredNotice, setExpiredNotice] = useState(Boolean(routeState?.expired))
   const [feed, setFeed] = useState<FeedItem[]>([])
-  const [history, setHistory] = useState<number[]>(() => [initial.seats.filter((s) => s.status === 'booked').length])
-  const [mode, setMode] = useState<'3d' | 'map'>(() => {
+  const [mode, setMode] = useState<ViewMode>(() => {
     try {
       const v = localStorage.getItem('seatlock-view')
-      if (v === '3d' || v === 'map') return v === '3d' && !hasWebGL() ? 'map' : v
+      if (v === '3d' || v === 'easy' || v === 'map') return v !== 'map' && !hasWebGL() ? 'map' : v
     } catch {
       /* ignore */
     }
@@ -286,7 +293,24 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const total = totalFor(optimisticSelected, seats)
   const selectedSeats = optimisticSelected.map((sid) => seats.find((s) => s.id === sid)).filter((s): s is Seat => Boolean(s))
 
-  const switchMode = (m: '3d' | 'map') => {
+  // Conflict check: another booking within about 3 hours of this one.
+  useEffect(() => {
+    let alive = true
+    api
+      .bookings()
+      .then((list: Booking[]) => {
+        if (!alive) return
+        const me = Date.parse(event.startsAt)
+        const hit = list.find((b) => b.event.title !== event.title && Math.abs(Date.parse(b.event.startsAt) - me) < 3 * 3600_000)
+        setClash(hit ? hit.event.title : null)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [event.id, event.startsAt])
+
+  const switchMode = (m: ViewMode) => {
     setMode(m)
     try {
       localStorage.setItem('seatlock-view', m)
@@ -351,7 +375,6 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         lastSeats.current = r.seats
         // ViewTransition animates seat-state changes on the 2D map.
         startGlobalTransition(() => setSeats(r.seats))
-        setHistory((h) => [...h, r.seats.filter((s) => s.status === 'booked').length].slice(-40))
         return r.seats
       })
       .catch(() => {
@@ -402,39 +425,43 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
     setLimitHit(false)
     setFocusSeat(seat.id)
     if (optimisticSelected.includes(seat.id)) {
+      sfx.deselect()
       setSelected((cur) => cur.filter((x) => x !== seat.id))
       setAnnounce(`${seat.id} removed. ${optimisticSelected.length - 1} of ${MAX_SEATS} seats selected.`)
       return
     }
     if (!isSelectable(seat)) {
+      sfx.error()
       const why = seat.status === 'held' ? 'is being held by someone else' : seat.status === 'booked' ? (seat.mine ? 'is already yours' : 'is already booked') : 'is not for sale'
       setAnnounce(`${seat.id} ${why}.`)
       toast(`${seat.id} ${why}`, 'Pick a light seat with a number on it.')
       return
     }
     if (optimisticSelected.length >= MAX_SEATS) {
+      sfx.warn()
       setLimitHit(true)
       setAnnounce(`You can select up to ${MAX_SEATS} seats. Remove one to choose ${seat.id}.`)
       toast.error(`Maximum ${MAX_SEATS} seats per booking`, `Remove a seat to choose ${seat.id} instead.`)
       return
     }
+    sfx.select()
     setAnnounce(`${seat.id} selected, ${money(seat.price)}. ${optimisticSelected.length + 1} of ${MAX_SEATS} seats selected.`)
+    // Select at once so rapid taps all register; the live re-check below can still take it back.
+    setSelected((cur) => (cur.length >= MAX_SEATS ? cur : reduceSelection(cur, { type: 'add', id: seat.id })))
     startTransition(async () => {
       applyOptimistic({ type: 'add', id: seat.id })
       const latest = await refreshSeats()
       const fresh = latest?.find((s) => s.id === seat.id)
-      startTransition(() => {
-        if (latest && (!fresh || !isSelectable(fresh))) {
-          // Roll back: the optimistic seat reverts automatically; explain why.
+      if (latest && (!fresh || !isSelectable(fresh))) {
+        startTransition(() => {
+          setSelected((cur) => reduceSelection(cur, { type: 'remove', id: seat.id }))
           flagLost([seat.id])
           const alt = suggestAlternative(seat, latest, new Set(selected))
           setConflict({ kind: 'poll', lost: [seat], kept: selected, alternatives: { [seat.id]: alt } })
           setAnnounce(`${seat.id} was just taken by someone else.`)
           toast.warning(`${seat.id} was just taken`, alt ? `${alt.id} next to it is free.` : 'Try another seat.')
-          return
-        }
-        setSelected((cur) => (cur.length >= MAX_SEATS ? cur : reduceSelection(cur, { type: 'add', id: seat.id })))
-      })
+        })
+      }
     })
   }
 
@@ -494,8 +521,6 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   // Live numbers for the data strip.
   const counts = { available: 0, held: 0, booked: 0, blocked: 0 }
   for (const s of seats) counts[s.heldByMe ? 'available' : s.status]++
-  const fill = Math.round((counts.booked / seats.length) * 100)
-  const watching = 6 + ((event.id.length * 7 + counts.held * 3) % 23)
 
   const focusId = optimisticSelected.at(-1) ?? focusSeat ?? suggestion?.seatIds[0] ?? defaultFocus(seats, event.kind)
 
@@ -556,6 +581,16 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
       </p>
 
       <div className="ep-main">
+        {clash && (
+          <div className="alert" data-tone="warning" role="status">
+            <Icon name="clock" size={18} />
+            <div>
+              <strong>Time clash</strong>
+              You also have “{clash}” around this time.
+            </div>
+          </div>
+        )}
+
         {expiredNotice && (
           <div className="alert" data-tone="warning" role="alert">
             <Icon name="clock" size={18} />
@@ -594,6 +629,30 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
           </div>
         )}
 
+        <div className="ep-happening" aria-live="off">
+          <span>
+            <strong className="lk-num">{counts.available}</strong> free
+          </span>
+          <span>
+            <strong className="lk-num">{counts.booked}</strong> booked
+          </span>
+          {counts.held > 0 && (
+            <span>
+              <strong className="lk-num">{counts.held}</strong> being held
+            </span>
+          )}
+          <span className="ep-happening-now">
+            {feed[0] ? (
+              <>
+                <strong>{feed[0].who}</strong> {feed[0].kind === 'held' ? 'is holding' : feed[0].kind === 'booked' ? 'booked' : 'released'}{' '}
+                <span className="lk-num">{feed[0].seats.join(', ')}</span>
+              </>
+            ) : (
+              'Nothing has changed just now'
+            )}
+          </span>
+        </div>
+
         <section className="ep-stage lk-card" data-kind={event.kind} aria-labelledby="map-title">
           <div className="ep-toolbar">
             <h2 id="map-title" className="sr-only">
@@ -601,26 +660,23 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
             </h2>
             <div className="seg" role="tablist" aria-label="Map view">
               <button type="button" role="tab" aria-selected={mode === '3d'} onClick={() => switchMode('3d')} disabled={!hasWebGL()}>
-                <Icon name="cube" size={16} /> 3D {event.kind === 'bus' ? 'coach' : 'hall'}
+                <Icon name="cube" size={16} /> {t('ev.view3d')} {event.kind === 'bus' ? 'coach' : 'hall'}
+              </button>
+              <button type="button" role="tab" aria-selected={mode === 'easy'} onClick={() => switchMode('easy')} disabled={!hasWebGL()}>
+                <Icon name="eye" size={16} /> {t('ev.easy')}
               </button>
               <button type="button" role="tab" aria-selected={mode === 'map'} onClick={() => switchMode('map')}>
-                <Icon name="grid" size={16} /> Seat map
+                <Icon name="grid" size={16} /> {t('ev.map')}
               </button>
             </div>
             <span className="live" data-off={!demo.live || undefined} data-stale={stale || undefined}>
               <span className="live-dot" aria-hidden="true" />
-              {stale ? 'Reconnecting…' : demo.live ? (
-                <>
-                  Live · <span className="lk-num">{watching}</span>&nbsp;watching
-                </>
-              ) : (
-                'Live availability'
-              )}
+              {stale ? 'Reconnecting…' : t('ev.live')}
             </span>
           </div>
 
-          {mode === '3d' ? (
-            <div className="ep-viewport" ref={stageRef}>
+          {mode !== 'map' ? (
+            <div className="ep-viewport" ref={stageRef} data-easy={mode === 'easy' || undefined}>
               <ErrorBoundary section="the 3D view" compact onReset={() => switchMode('map')}>
                 <Suspense fallback={<StageSkeleton kind={event.kind} />}>
                   <Scene3D
@@ -631,7 +687,8 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                     lost={lost}
                     view={camera}
                     focusId={focusId}
-                    people={demo.people}
+                    people={demo.people && mode === '3d'}
+                    simple={mode === 'easy'}
                     screenTitle={event.title}
                     onPick={toggleSeatById}
                     onHover={hover}
@@ -660,24 +717,12 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
           </div>
         </section>
 
-        <div className="ep-kpis">
-          <Kpi label="Available" value={counts.available} of={seats.length} />
-          <Kpi label="Being held" value={counts.held} of={seats.length} tone="coral" />
-          <Kpi label="Booked" value={counts.booked} of={seats.length} />
-          <div className="ep-kpi lk-card">
-            <span className="ep-kpi-label">Fill rate</span>
-            <span className="ep-kpi-value lk-num">{fill}%</span>
-            <Spark pts={history} />
-          </div>
-        </div>
-
-        <TierTable seats={seats} kind={event.kind} />
       </div>
 
       <aside className="ep-side" aria-label="Your selection">
         <section className="ep-summary lk-card" aria-labelledby="summary-title">
           <div className="ep-summary-head">
-            <h2 id="summary-title">Your seats</h2>
+            <h2 id="summary-title">{t('ev.yourSeats')}</h2>
             <span className="ep-pips" aria-label={`${optimisticSelected.length} of ${MAX_SEATS} selected`}>
               {Array.from({ length: MAX_SEATS }, (_, i) => (
                 <span key={i} data-on={i < optimisticSelected.length || undefined} />
@@ -715,18 +760,38 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
             </p>
           )}
           <div className="ep-total">
-            <span>Total</span>
+            <span>{t('ev.total')}</span>
             <strong className="lk-num" key={total}>
               {rupees(total)}
             </strong>
           </div>
+          <label className="ep-budget">
+            <span>{t('ev.budget')}</span>
+            <span className="ep-budget-field">
+              ₹
+              <input type="number" inputMode="numeric" min="0" step="10" value={budget} placeholder="500" onChange={(e) => setBudget(e.currentTarget.value)} />
+            </span>
+          </label>
+          {budget !== '' && optimisticSelected.length > 0 && total > Number(budget) && (
+            <p className="lk-error" role="status">
+              <Icon name="info" size={16} /> {t('ev.overBudget')} by {rupees(total - Number(budget))}
+            </p>
+          )}
           <p className="ep-fine">All-in price, no booking fee. Seats lock for 5 minutes once held.</p>
+          <div className="ep-facts-card">
+            <h3>{t('ev.goodToKnow')}</h3>
+            <ul>
+              {goodToKnow(layout, event.kind).map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
           {isDesktop && holdForm}
         </section>
 
         {!isDesktop && (
           <button type="button" className="lk-btn lk-btn-block ep-ai-toggle" aria-expanded={assistantOpen} aria-controls="assistant-panel" onClick={() => setAssistantOpen((o) => !o)}>
-            <Icon name="sparkle" size={18} /> {assistantOpen ? 'Hide seat assistant' : 'Ask the AI seat assistant'}
+            <Icon name="sparkle" size={18} /> {assistantOpen ? 'Hide seat assistant' : t('ev.askAi')}
           </button>
         )}
         <div id="assistant-panel">
@@ -754,74 +819,21 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   )
 }
 
+function goodToKnow(layout: Layout, kind: Kind): string[] {
+  const out: string[] = []
+  const wheel = layout.seats.filter((x) => x.tags.includes('Wheelchair')).map((x) => x.id)
+  if (wheel.length) out.push(`Wheelchair spaces: ${wheel.join(', ')}`)
+  const exit = layout.seats.find((x) => x.tags.includes('Emergency exit'))
+  if (exit) out.push(`Emergency exit beside seat ${exit.id}`)
+  const women = [...new Set(layout.seats.filter((x) => x.tags.includes('Women only')).map((x) => x.row + 1))]
+  if (women.length) out.push(`Women-only rows: ${women.join(', ')}`)
+  out.push(kind === 'cinema' ? 'Best sightline: the middle rows' : 'Board at the front door')
+  return out
+}
+
 function defaultFocus(seats: Seat[], kind: string): string {
   const best = seats.find((s) => s.status === 'available' && (kind === 'cinema' ? s.tags.includes('Sweet spot') : s.tags.includes('Window')))
   return (best ?? seats[Math.floor(seats.length / 2)])?.id ?? ''
-}
-
-function Kpi({ label, value, of, tone }: { label: string; value: number; of: number; tone?: 'coral' }) {
-  return (
-    <div className="ep-kpi lk-card" data-tone={tone}>
-      <span className="ep-kpi-label">{label}</span>
-      <span className="ep-kpi-value lk-num">{value}</span>
-      <span className="ep-kpi-sub lk-num">of {of}</span>
-    </div>
-  )
-}
-
-function Spark({ pts }: { pts: number[] }) {
-  if (pts.length < 2) return <span className="ep-kpi-sub">collecting…</span>
-  const lo = Math.min(...pts)
-  const hi = Math.max(...pts, lo + 1)
-  const d = pts.map((p, i) => `${(i / (pts.length - 1)) * 100},${26 - ((p - lo) / (hi - lo)) * 22 - 2}`).join(' ')
-  return (
-    <svg className="ep-spark" viewBox="0 0 100 26" preserveAspectRatio="none" role="img" aria-label={`Booked seats went from ${pts[0]} to ${pts.at(-1)} while you watched`}>
-      <polyline points={d} fill="none" stroke="currentColor" strokeWidth="1.8" vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
-
-function TierTable({ seats, kind }: { seats: Seat[]; kind: string }) {
-  const tiers = [...new Set(seats.map((s) => s.section))]
-  return (
-    <div className="lk-card ep-tiers">
-      <table>
-        <caption className="sr-only">Availability by {kind === 'cinema' ? 'tier' : 'seat type'}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{kind === 'cinema' ? 'Tier' : 'Seat type'}</th>
-            <th scope="col">Price</th>
-            <th scope="col">Availability</th>
-            <th scope="col" className="ep-num">
-              Left
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {tiers.map((t) => {
-            const all = seats.filter((s) => s.section === t)
-            const free = all.filter((s) => s.status === 'available' || s.heldByMe).length
-            const pct = all.length ? (free / all.length) * 100 : 0
-            return (
-              <tr key={t}>
-                <th scope="row">{tierLabel(t)}</th>
-                <td className="lk-num">{money(Math.min(...all.map((s) => s.price)))}</td>
-                <td>
-                  <span className="ep-meter" aria-hidden="true">
-                    <span style={{ width: `${pct}%` }} data-low={pct < 20 || undefined} />
-                  </span>
-                </td>
-                <td className="ep-num lk-num">
-                  {free}
-                  <small>/{all.length}</small>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
 }
 
 function useNow(ms: number) {

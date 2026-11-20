@@ -1,6 +1,7 @@
 /* ==========================================================================
-   SeatLock design tokens — the single source of truth, rendered live on /design.
-   "Ledger" light theme (paper, ink, signal yellow) and a "Night" dark theme.
+   SeatLock design tokens — the single source of truth.
+   White base everywhere. Bus accent = yellow, cinema accent = cherry red
+   (set by data-mode on <html>). A dark "Night" theme is available.
    Text pairs are checked to ≥ 4.5:1 on their intended surface.
    ========================================================================== */
 :root,
@@ -52,15 +53,16 @@
 
   /* Ledger (light) */
   color-scheme: light;
-  --lk-canvas: #eceee7;
-  --lk-surface: #f7f8f4;
-  --lk-elevated: #e2e6dc;
-  --lk-ink: #0f1a14;
-  --lk-muted: #56625a;
-  --lk-line: #d2d8cd;
-  --lk-line-strong: #a6afa2;
-  --lk-signal: #f2b705;
-  --lk-on-signal: #14110a;
+  --lk-canvas: #ffffff;
+  --lk-surface: #ffffff;
+  --lk-elevated: #f4f5f2;
+  --lk-ink: #111613;
+  --lk-muted: #5b6660;
+  --lk-line: #e6e8e3;
+  --lk-line-strong: #b9beb6;
+  --lk-signal: #a4122a;
+  --lk-on-signal: #ffffff;
+  --lk-accent-soft: #fbe9ec;
   --lk-gain: #1f7a4a;
   --lk-coral: #c2452d;
   --lk-danger: #b4412b;
@@ -72,7 +74,7 @@
   --lk-ok-ink: #17502f;
   --lk-ai: #5146dd;
   --lk-ai-bg: #e4e2fb;
-  --lk-glass: rgb(236 238 231 / 0.95);
+  --lk-glass: rgb(255 255 255 / 0.94);
   --lk-shadow: 0 1px 0 rgb(15 26 20 / 0.04), 0 18px 40px -24px rgb(15 26 20 / 0.28);
 
   --seat-free: #f7f8f4;
@@ -88,15 +90,16 @@
 :root[data-theme='dark'],
 [data-theme='dark'] {
   color-scheme: dark;
-  --lk-canvas: #0b100d;
-  --lk-surface: #121a16;
+  --lk-canvas: #0b0d0c;
+  --lk-surface: #131715;
   --lk-elevated: #1b2620;
   --lk-ink: #e6ebe2;
   --lk-muted: #98a49b;
   --lk-line: #26322b;
   --lk-line-strong: #3a493f;
-  --lk-signal: #f5c02e;
-  --lk-on-signal: #14110a;
+  --lk-signal: #e0344f;
+  --lk-on-signal: #ffffff;
+  --lk-accent-soft: #33161c;
   --lk-gain: #6fd39a;
   --lk-coral: #ff8a65;
   --lk-danger: #ef7a5f;
@@ -123,6 +126,28 @@
 
 [data-theme='light'] {
   color-scheme: light;
+}
+
+/* Mode accents. Bus = white + yellow; cinema = white + cherry red. */
+[data-mode='bus'] {
+  --lk-signal: #ffc800;
+  --lk-on-signal: #111613;
+  --lk-accent-soft: #fff6c7;
+}
+[data-mode='cinema'] {
+  --lk-signal: #a4122a;
+  --lk-on-signal: #ffffff;
+  --lk-accent-soft: #fbe9ec;
+}
+:root[data-theme='dark'][data-mode='bus'] {
+  --lk-signal: #ffc800;
+  --lk-on-signal: #111613;
+  --lk-accent-soft: #3a3210;
+}
+:root[data-theme='dark'][data-mode='cinema'] {
+  --lk-signal: #e0344f;
+  --lk-on-signal: #ffffff;
+  --lk-accent-soft: #33161c;
 }
 
 @media (prefers-reduced-motion: reduce) {

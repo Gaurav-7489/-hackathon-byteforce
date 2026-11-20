@@ -9,7 +9,7 @@ export function NotFound() {
         icon="seat"
         title="This seat doesn’t exist"
         action={
-          <Link to="/explore" className="lk-btn lk-btn-primary">
+          <Link to="/" className="lk-btn lk-btn-primary">
             Back to shows and trips
           </Link>
         }

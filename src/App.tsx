@@ -55,12 +55,12 @@ const router = createBrowserRouter([
     HydrateFallback: Loading,
     errorElement: <RouteError />,
     children: [
-      { path: '/design', lazy: async () => ({ Component: (await import('./routes/Design')).Design }) },
       {
         element: <RequireAuth />,
         children: [
-          { index: true, element: <Navigate to="/explore" replace /> },
-          { path: '/explore', lazy: async () => ({ Component: (await import('./routes/Explore')).Explore }) },
+          { index: true, lazy: async () => ({ Component: (await import('./routes/Home')).Home }) },
+          { path: '/explore', element: <Navigate to="/" replace /> },
+          { path: '/book/:kind', lazy: async () => ({ Component: (await import('./routes/Browse')).Browse }) },
           { path: '/e/:id', lazy: async () => ({ Component: (await import('./routes/EventPage')).EventPage }) },
           { path: '/checkout', lazy: async () => ({ Component: (await import('./routes/Checkout')).Checkout }) },
           { path: '/success', lazy: async () => ({ Component: (await import('./routes/Success')).Success }) },

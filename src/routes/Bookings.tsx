@@ -116,7 +116,7 @@ function Wallet({ promise }: { promise: Promise<Booking[]> }) {
               icon="ticket"
               title="No upcoming tickets"
               action={
-                <Link to="/explore" className="lk-btn lk-btn-primary">
+                <Link to="/" className="lk-btn lk-btn-primary">
                   Find a show or trip
                 </Link>
               }

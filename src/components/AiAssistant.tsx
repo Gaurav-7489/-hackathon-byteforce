@@ -3,7 +3,8 @@ import { aiAssist } from '../lib/api/client'
 import { toApiError } from '../lib/api/errors'
 import type { Kind, Seat } from '../lib/api/types'
 import { money } from '../lib/format'
-import { isSelectable, MAX_SEATS, tierLabel, totalFor } from '../lib/seats'
+import { sfx } from '../lib/sound'
+import { isSelectable, MAX_SEATS, tierLabel } from '../lib/seats'
 import { Icon } from './Icon'
 import './assistant.css'
 
@@ -12,11 +13,10 @@ const TIMEOUT_MS = 8000
 const CHIPS: Record<Kind, { label: string; prompt: string }[]> = {
   cinema: [
     { label: 'Best view', prompt: "2 seats, best view, price doesn't matter" },
-    { label: 'Near screen', prompt: '2 seats together near the screen' },
-    { label: 'Aisle', prompt: 'aisle seat in the middle section' },
+    { label: 'Together', prompt: '2 seats together near the screen' },
     { label: 'Cheapest', prompt: 'cheapest 2 seats together' },
     { label: 'Recliners', prompt: '2 recliner seats together' },
-    { label: '4 in a row', prompt: '4 seats in the same row' },
+    { label: 'Wheelchair', prompt: 'wheelchair space with a companion seat' },
     { label: 'Hinglish', prompt: 'do sasti seats saath mein, beech mein' },
   ],
   bus: [
@@ -30,11 +30,9 @@ const CHIPS: Record<Kind, { label: string; prompt: string }[]> = {
 }
 const REFINE_CHIPS = [
   { label: 'Cheaper', prompt: 'cheaper' },
-  { label: 'Closer', prompt: 'closer to the front' },
+  { label: 'Closer to front', prompt: 'closer to the front' },
   { label: 'Another option', prompt: 'show me a different option' },
 ]
-
-type Phase = 'idle' | 'thinking' | 'done' | 'empty' | 'error' | 'timeout' | 'stopped'
 
 export interface Suggestion {
   seatIds: string[]
@@ -80,26 +78,52 @@ export function validateSuggestion(ids: string[], seats: Seat[]): { valid: strin
   return { valid, dropped }
 }
 
+interface Msg {
+  id: number
+  from: 'me' | 'ai'
+  text: string
+  seatIds?: string[]
+  error?: boolean
+  retry?: string
+}
+
+/** Chat-only seat assistant: the conversation and suggestions, nothing about how it works. */
 export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSuggest, onUse }: Props) {
   const [prompt, setPrompt] = useState('')
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [steps, setSteps] = useState<string[]>([])
-  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msgs, setMsgs] = useState<Msg[]>([
+    {
+      id: 0,
+      from: 'ai',
+      text: kind === 'cinema' ? 'Tell me the seats you want, in English or Hinglish. I suggest, you choose.' : 'Tell me the seat you want, in English or Hinglish. I suggest, you choose.',
+    },
+  ])
   const [history, setHistory] = useState<{ prompt: string; seatIds: string[] }[]>([])
   const [listening, setListening] = useState(false)
+  const seq = useRef(0)
   const abortRef = useRef<{ ctrl: AbortController; timedOut: boolean } | null>(null)
   const recRef = useRef<SpeechRecognitionLike | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const logRef = useRef<HTMLDivElement>(null)
   const canListen = typeof window !== 'undefined' && speechCtor() !== null
 
-  useEffect(() => () => {
-    abortRef.current?.ctrl.abort()
-    recRef.current?.stop()
-  }, [])
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
+  }, [msgs.length, busy])
+
+  useEffect(
+    () => () => {
+      abortRef.current?.ctrl.abort()
+      recRef.current?.stop()
+    },
+    [],
+  )
+
+  const push = (m: Omit<Msg, 'id'>) => setMsgs((cur) => [...cur, { ...m, id: ++seq.current }])
 
   const ask = async (text: string) => {
     const q = text.trim()
-    if (!q || phase === 'thinking') return
+    if (!q || busy) return
     abortRef.current?.ctrl.abort()
     const run = { ctrl: new AbortController(), timedOut: false }
     abortRef.current = run
@@ -107,9 +131,9 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
       run.timedOut = true
       run.ctrl.abort()
     }, TIMEOUT_MS)
-    setPhase('thinking')
-    setSteps([])
-    setMessage('')
+    push({ from: 'me', text: q })
+    setPrompt('')
+    setBusy(true)
     onSuggest(null)
     try {
       const result = await aiAssist(
@@ -119,41 +143,36 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
           prompt: q,
           maxSeats: MAX_SEATS,
           selectedSeatIds: [...selected],
-          // Current availability + prices as context.
           seats: seats.map(({ id, row, r, number, section, price, status, isAisle, heldByMe, tags }) => ({
             id, row, r, number, section, price, isAisle, tags, status: heldByMe ? 'available' : status,
           })),
           history: history.slice(-3),
         },
-        (chunk) => { if (chunk.type === 'progress') setSteps((s) => [...s, chunk.text]) },
+        () => {},
         run.ctrl.signal,
       )
       const { valid, dropped } = validateSuggestion(result.seatIds, seats)
       setHistory((h) => [...h, { prompt: q, seatIds: valid }])
       if (valid.length === 0) {
-        setPhase('empty')
-        setMessage(dropped.length
-          ? `The assistant suggested ${dropped.join(', ')}, but ${dropped.length > 1 ? 'those seats are' : 'that seat is'} no longer available. Try again or pick manually.`
-          : result.reason)
-        return
+        push({
+          from: 'ai',
+          text: dropped.length
+            ? `${dropped.join(', ')} ${dropped.length > 1 ? 'are' : 'is'} no longer available. Try again, or pick on the map.`
+            : result.reason || 'I could not find seats for that. Try a different request.',
+        })
+      } else {
+        onSuggest({ seatIds: valid, reason: result.reason, dropped })
+        push({ from: 'ai', text: result.reason, seatIds: valid })
+        sfx.ai()
       }
-      onSuggest({ seatIds: valid, reason: result.reason, dropped })
-      setPhase('done')
-      setPrompt('')
     } catch (e) {
       const err = toApiError(e)
-      if (run.timedOut) {
-        setPhase('timeout')
-        setMessage('The assistant took longer than 8 seconds, so we stopped it. The seat map still works — pick seats manually or try a shorter request.')
-      } else if (err.code === 'aborted') {
-        setPhase('stopped')
-        setMessage('Stopped. Your seat selection is unchanged.')
-      } else {
-        setPhase('error')
-        setMessage('The assistant is unavailable right now. You can still choose seats on the map.')
-      }
+      if (run.timedOut) push({ from: 'ai', error: true, text: 'That took over 8 seconds, so I stopped. You can still pick seats on the map.', retry: q })
+      else if (err.code === 'aborted') push({ from: 'ai', text: 'Stopped. Your seats are unchanged.' })
+      else push({ from: 'ai', error: true, text: 'I am unavailable right now. You can still choose seats on the map.', retry: q })
     } finally {
       clearTimeout(timer)
+      setBusy(false)
     }
   }
 
@@ -173,117 +192,124 @@ export function AiAssistant({ kind, eventId, seats, selected, suggestion, onSugg
     rec.lang = 'en-IN' // handles Hinglish reasonably
     rec.interimResults = true
     rec.onresult = (e) => {
-      const text = Array.from({ length: e.results.length }, (_, i) => e.results[i]?.[0]?.transcript ?? '').join(' ')
-      setPrompt(text)
+      setPrompt(Array.from({ length: e.results.length }, (_, i) => e.results[i]?.[0]?.transcript ?? '').join(' '))
     }
-    rec.onend = () => { setListening(false); inputRef.current?.focus() }
+    rec.onend = () => {
+      setListening(false)
+      inputRef.current?.focus()
+    }
     rec.onerror = () => setListening(false)
     recRef.current = rec
     setListening(true)
     rec.start()
   }
 
-  const chips = phase === 'done' && history.length > 0 ? REFINE_CHIPS : CHIPS[kind]
-  const suggestedSeats = suggestion ? seats.filter((s) => suggestion.seatIds.includes(s.id)) : []
+  const chips = suggestion && history.length > 0 ? REFINE_CHIPS : CHIPS[kind]
 
   return (
-    <section className="assistant" aria-labelledby="assistant-title">
-      <header className="assistant-head">
-        <span className="assistant-orb" aria-hidden="true" data-thinking={phase === 'thinking' || undefined} />
-        <div>
-          <h2 id="assistant-title" className="assistant-title">Seat assistant <span className="badge badge-ai">AI</span></h2>
-          <p className="assistant-sub">Describe what you want, in English or Hinglish. It suggests — you decide.</p>
-        </div>
+    <section className="assistant chat" aria-labelledby="assistant-title">
+      <header className="chat-head">
+        <span className="assistant-orb" aria-hidden="true" data-thinking={busy || undefined} />
+        <h2 id="assistant-title" className="chat-title">
+          Seat assistant
+        </h2>
+        <span className="badge badge-ai">AI</span>
       </header>
 
-      <form className="assistant-form" onSubmit={onSubmit}>
-        <label htmlFor="ai-prompt" className="sr-only">Describe the seats you want</label>
-        <div className="assistant-input-wrap" data-active={phase === 'thinking' || undefined}>
-          <input
-            ref={inputRef}
-            id="ai-prompt"
-            className="assistant-input"
-            value={prompt}
-            onChange={(e) => setPrompt(e.currentTarget.value)}
-            placeholder={history.length ? 'Refine: “cheaper”, “closer”…' : kind === 'cinema' ? '“2 seats together near the screen under ₹300”' : '“window seat near the front”'}
-            autoComplete="off"
-            enterKeyHint="send"
-            disabled={phase === 'thinking'}
-          />
-          {canListen && phase !== 'thinking' && (
-            <button type="button" className="lk-icon-btn assistant-icon" onClick={toggleVoice} aria-pressed={listening} aria-label={listening ? 'Stop voice input' : 'Speak your request'}>
-              <Icon name="mic" size={18} />
-            </button>
-          )}
-          {phase === 'thinking' ? (
-            <button type="button" className="assistant-send is-stop" onClick={() => abortRef.current?.ctrl.abort()} aria-label="Stop the assistant">
-              <Icon name="stop" size={16} />
-            </button>
-          ) : (
-            <button type="submit" className="assistant-send" disabled={!prompt.trim()} aria-label="Ask the assistant">
-              <Icon name="send" size={18} />
-            </button>
-          )}
-        </div>
-        <div className="assistant-chips" role="group" aria-label={history.length && phase === 'done' ? 'Refine suggestion' : 'Suggested requests'}>
-          {chips.map((c) => (
-            <button key={c.label} type="button" className="chip" disabled={phase === 'thinking'} onClick={() => { setPrompt(c.prompt); void ask(c.prompt) }}>
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </form>
-
-      <div className="assistant-output" aria-live="polite" aria-busy={phase === 'thinking'}>
-          {phase === 'thinking' && (
-            <ol key="steps" className="assistant-steps">
-              {steps.length === 0 && <li className="is-current">Connecting to the assistant…</li>}
-              {steps.map((s, i) => (
-                <li key={i} className={i === steps.length - 1 ? 'is-current' : 'is-done'}>
-                  {i === steps.length - 1 ? <span className="spinner" aria-hidden="true" /> : <Icon name="check" size={14} />}
-                  {s}
-                </li>
-              ))}
-            </ol>
-          )}
-
-          {phase === 'done' && suggestion && (
-            <div key={suggestion.seatIds.join()} className="suggestion">
-              <div className="suggestion-top">
-                <span className="badge badge-ai"><Icon name="sparkle" size={12} /> AI-generated</span>
-                <span className="suggestion-total num">{money(totalFor(suggestion.seatIds, seats))}</span>
-              </div>
-              <ul className="suggestion-seats" aria-label="Suggested seats">
-                {suggestedSeats.map((s) => (
-                  <li key={s.id}><strong>{s.id}</strong><span>{tierLabel(s.section)} · {money(s.price)}</span></li>
-                ))}
-              </ul>
-              <p className="suggestion-reason">{suggestion.reason}</p>
-              {suggestion.dropped.length > 0 && (
-                <p className="suggestion-note"><Icon name="info" size={14} /> Removed {suggestion.dropped.join(', ')} — no longer available or over the 4-seat limit.</p>
-              )}
-              <div className="suggestion-actions">
-                <button type="button" className="lk-btn lk-btn-primary" onClick={() => onUse(suggestion.seatIds)}>
-                  <Icon name="check" size={16} /> Use these seats
+      <div className="chat-log" ref={logRef} role="log" aria-live="polite" aria-relevant="additions">
+        {msgs.map((m) => (
+          <div key={m.id} className="bubble-row" data-from={m.from}>
+            <div className="bubble" data-error={m.error || undefined}>
+              <p>{m.text}</p>
+              {m.seatIds && m.seatIds.length > 0 && <SeatChips ids={m.seatIds} seats={seats} selected={selected} onUse={onUse} />}
+              {m.retry && (
+                <button type="button" className="chat-retry" onClick={() => void ask(m.retry!)}>
+                  <Icon name="refresh" size={14} /> Try again
                 </button>
-                <button type="button" className="lk-btn lk-btn-ghost" onClick={() => { onSuggest(null); setPhase('idle') }}>Dismiss</button>
-              </div>
-              <p className="suggestion-fine">Highlighted in violet on the map and in 3D. Nothing is held until you press Hold seats.</p>
+              )}
             </div>
-          )}
-
-          {(phase === 'empty' || phase === 'error' || phase === 'timeout' || phase === 'stopped') && (
-            <div key={phase} className="alert" data-tone={phase === 'stopped' || phase === 'empty' ? 'info' : 'warning'} role={phase === 'error' || phase === 'timeout' ? 'alert' : undefined}>
-              <Icon name={phase === 'stopped' ? 'info' : 'alert'} size={18} />
-              <div>
-                <span>{message}</span>
-                {(phase === 'error' || phase === 'timeout') && prompt.trim() && (
-                  <button type="button" className="lk-btn lk-btn-ghost lk-btn-sm assistant-retry" onClick={() => void ask(prompt)}><Icon name="refresh" size={16} /> Retry</button>
-                )}
-              </div>
+          </div>
+        ))}
+        {busy && (
+          <div className="bubble-row" data-from="ai">
+            <div className="bubble is-typing" role="status" aria-label="Assistant is replying">
+              <span />
+              <span />
+              <span />
             </div>
-          )}
+          </div>
+        )}
       </div>
+
+      <div className="chat-chips" role="group" aria-label="Quick requests">
+        {chips.map((c) => (
+          <button key={c.label} type="button" className="chip" disabled={busy} onClick={() => { setPrompt(c.prompt); void ask(c.prompt) }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <form className="chat-input" onSubmit={onSubmit}>
+        <label htmlFor="ai-prompt" className="sr-only">
+          Describe the seats you want
+        </label>
+        <input
+          ref={inputRef}
+          id="ai-prompt"
+          className="assistant-input"
+          value={prompt}
+          onChange={(e) => setPrompt(e.currentTarget.value)}
+          placeholder={kind === 'cinema' ? '“2 seats together near the screen”' : '“window seat near the front”'}
+          autoComplete="off"
+          enterKeyHint="send"
+        />
+        {canListen && !busy && (
+          <button type="button" className="lk-icon-btn assistant-icon" onClick={toggleVoice} aria-pressed={listening} aria-label={listening ? 'Stop listening' : 'Speak your request'}>
+            <Icon name="mic" size={18} />
+          </button>
+        )}
+        {busy ? (
+          <button type="button" className="assistant-send is-stop" onClick={() => abortRef.current?.ctrl.abort()} aria-label="Stop">
+            <Icon name="stop" size={16} />
+          </button>
+        ) : (
+          <button type="submit" className="assistant-send" disabled={!prompt.trim()} aria-label="Send">
+            <Icon name="send" size={18} />
+          </button>
+        )}
+      </form>
     </section>
+  )
+}
+
+function SeatChips({ ids, seats, selected, onUse }: { ids: string[]; seats: Seat[]; selected: ReadonlySet<string>; onUse: (ids: string[]) => void }) {
+  const picked = ids.filter((id) => seats.some((s) => s.id === id))
+  const allTaken = picked.length > 0 && picked.every((id) => selected.has(id))
+  const total = picked.reduce((n, id) => n + (seats.find((s) => s.id === id)?.price ?? 0), 0)
+  return (
+    <div className="seat-suggest">
+      <ul aria-label="Suggested seats">
+        {picked.map((id) => {
+          const s = seats.find((x) => x.id === id)!
+          return (
+            <li key={id}>
+              <strong>{id}</strong>
+              <span>
+                {tierLabel(s.section)} · {money(s.price)}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      {allTaken ? (
+        <span className="seat-suggest-done">
+          <Icon name="check" size={14} /> Selected · {money(total)}
+        </span>
+      ) : (
+        <button type="button" className="lk-btn lk-btn-primary lk-btn-sm" onClick={() => onUse(picked)}>
+          Use these seats · {money(total)}
+        </button>
+      )}
+    </div>
   )
 }

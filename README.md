@@ -31,12 +31,12 @@ Set `VITE_API_BASE_URL` to the organizer API to use it instead of the built-in m
 | Brief | Route | What’s there |
 | --- | --- | --- |
 | 1. Login | `/login` | Two steps: choose Cinema or Bus, then sign in. Inline validation on blur, wrong-password message, pending button. |
-| 2. Event list | `/explore` | Shows and trips as poster cards (date, venue, price, seats left + fill meter), Cinema / Bus / All tabs, search, 7-day date strip, live stats, skeletons. |
+| 2. Home | `/` | Two rows, one for **Bus** (yellow accent) and one for **Cinema** (cherry-red accent). Each row plays its own film (muted; tap *Sound* to hear it) over the venue photo. |
+| 2b. Trips / shows | `/book/bus`, `/book/cinema` | One list per venue type: photo cards, seats left, search. No tabs or dashboards. |
 | 3. Details + seat map | `/e/:id` | Poster hero, route timeline (bus), AI summary; **3D hall / coach** and accessible **2D seat map**; legend, up to 4 seats, live total, Hold seats; KPIs, fill-rate sparkline, availability by tier, live activity feed, AI assistant. |
 | 4. Checkout | `/checkout` | Seats, price summary, 5-minute countdown ring (warns at 1 min, returns to the map on expiry), Confirm, Back, Cancel with confirmation. |
 | 5. Success | `/success` | Animated ticket card, seat details, QR placeholder, Add to calendar (.ics), View my tickets. |
 | 6. My bookings | `/bookings` | Upcoming / Past tabs, cancel confirmation dialog, empty states. |
-| Design tokens | `/design` | Colour (light + dark side by side), seat states, type scale, spacing, radius, components. |
 
 ## Seat map behaviour
 
@@ -67,22 +67,34 @@ The **Live demo** pill in the header turns the simulated crowd on/off — when o
 | Actions + `useActionState` | Login — `src/routes/Onboard.tsx`; Hold seats — `src/routes/EventPage.tsx`; Confirm booking — `src/routes/Checkout.tsx` |
 | `useFormStatus` | `src/components/SubmitButton.tsx` (used by all three forms) |
 | `useOptimistic` | Seat selection — `EventPage.tsx` (`applyOptimistic`); cancellation — `src/routes/Bookings.tsx` (`markCancelled`) |
-| Suspense + `use()` | Event list — `src/routes/Explore.tsx` (`EventGrid`); details + seat map — `EventPage.tsx`; tickets — `Bookings.tsx`; promise cache in `src/lib/resource.ts` |
+| Suspense + `use()` | Trip / show list — `src/routes/Browse.tsx` (`EventGrid`); details + seat map — `EventPage.tsx`; tickets — `Bookings.tsx`; promise cache in `src/lib/resource.ts` |
 | Error boundaries | `src/components/ErrorBoundary.tsx` around the list, listing header, seat map, 3D view, AI assistant and tickets |
-| `useTransition` | Search, date and type filters — `Explore.tsx`; seat re-check — `EventPage.tsx`; cancel — `Bookings.tsx` |
+| `useTransition` | Search — `Browse.tsx`; seat re-check — `EventPage.tsx`; cancel — `Bookings.tsx` |
 | `ViewTransition` | Poster morph card → detail (`EventCard.tsx` / `EventPage.tsx`), seat-state changes (`SeatMap.tsx`), summary list |
 | React Compiler | `vite.config.ts` (`reactCompilerPreset`) — no manual `useMemo`/`useCallback` outside the 3D scene |
 | Modern patterns | `ref` as a prop (`SubmitButton`), Context rendered as provider (`auth`, `theme`, `hold`, `demo`), `<title>`/`<meta>` from every route component |
 | TypeScript strict | `tsconfig.json`; API responses typed and parsed with zod in `src/lib/api/types.ts` |
-| Bonus | `useEffectEvent` (polling), `<Activity>` keeps the assistant alive when hidden on phones, hidden-tab retention, voice input, Hinglish, assistant refinement chips, AI summaries, animated ticket, PWA + offline page |
+| Bonus | `useEffectEvent` (polling), `<Activity>` keeps the assistant alive when hidden on phones, hidden-tab retention, voice input, English / Hindi switch (`src/lib/i18n.ts`), UI sound effects (`src/lib/sound.ts`), assistant refinement chips, AI summaries, animated ticket, PWA + offline page |
+
+Not done: **Next.js Server Components** (this is a Vite SPA; it would need a framework migration) and **fragment refs** (not available in the installed React 19.3 API).
 
 ## AI seat assistant
 
-`src/components/AiAssistant.tsx` calls only `POST /ai/assist` with current availability and prices, streams progress, has Stop and an 8-second timeout, validates every suggested seat (exists, available, ≤ 4), labels results **AI-generated**, highlights them on the map and in 3D, and only selects them after **Use these seats**. Chips: Best view, Near screen, Aisle, Cheapest, Recliners, Window, Women only, Hinglish; refinement chips after a result. The mock endpoint (`src/lib/api/mock/ai.ts`) understands English and common Hinglish (“do sasti seats saath mein”, “ek khidki wali seat aage”).
+`src/components/AiAssistant.tsx` is a chat: you type (or speak), it replies with the seats it suggests, and nothing is selected until you press **Use these seats**. It calls only `POST /ai/assist` with current availability and prices, has Stop and an 8-second timeout, and validates every suggested seat (exists, available, ≤ 4). Suggestions are highlighted on the map and in 3D. Quick chips and refinement chips (Cheaper, Closer to front, Another option) follow each reply. The mock endpoint (`src/lib/api/mock/ai.ts`) understands English and common Hinglish (“do sasti seats saath mein”, “ek khidki wali seat aage”).
 
 ## Design
 
-Light “Ledger” (paper, ink, signal yellow) and dark “Night” themes from one token file (`src/styles/tokens.css`); remembers the choice and follows the device on first visit. One variable font (Archivo) — its width axis gives the condensed display type. Responsive at 360 / 768 / 1280 px with a bottom tab bar on phones. Reduced motion disables animations and view transitions.
+White base everywhere. The venue sets the accent: **bus = white + yellow**, **cinema = white + cherry red** (`[data-mode]` on `<html>`, see `src/styles/tokens.css`). A dark theme is still available from the header. Venue photos are used on home, cards and headers, with generated art as the fallback when an image cannot load.
+
+### Videos
+
+The home rows load `public/media/bus.mp4` and `public/media/cinema.mp4`. Drop your films there with those exact names. If a file is missing, the venue photo stays.
+
+### Live demo
+
+Click **Live demo** in the header. The panel opens and shows the organizer-API requests as they happen (method, path, status, time), with the controls for the crowd, network and failures.
+
+One variable font (Archivo) — its width axis gives the condensed display type. Responsive at 360 / 768 / 1280 px with a bottom tab bar on phones. Reduced motion disables animations and view transitions.
 
 ## Layout
 
@@ -93,6 +105,6 @@ src/
   components/             layout, seat map, AI assistant, ticket, dialogs, toasts…
   lib/api/                typed client, zod schemas, mock server + AI + catalogue
   lib/                    auth, theme, hold, demo settings, seat rules, toasts
-  routes/                 Onboard, Explore, EventPage, Checkout, Success, Bookings, Design
+  routes/                 Onboard, Home, Browse, EventPage, Checkout, Success, Bookings
   styles/                 tokens, base, shared UI
 ```
