@@ -32,7 +32,7 @@ import { dateLong, money, rupees, time } from '../lib/format'
 import { useLang, useT } from '../lib/i18n'
 import { canSpeak, narrate, speak } from '../lib/speech'
 import { readLang } from '../lib/i18n'
-import { ToolStrip } from '../components/ToolStrip'
+import { ToolButton, ToolRow } from '../components/ToolStrip'
 import { setMode as applyEventMode } from '../lib/mode'
 import { sfx } from '../lib/sound'
 import { useHold } from '../lib/hold'
@@ -740,7 +740,13 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
           </div>
         </section>
 
-        <ToolStrip title="Smart tools for this booking" hiTitle="इस बुकिंग के स्मार्ट टूल" />
+        {/* Seat-finding tools sit right under the map they help with. */}
+        <ToolRow title="Find the right seat" hi="सही सीट खोजें">
+          <ToolButton id="access" label="Accessible seats" hi="सुलभ सीटें" />
+          <ToolButton id="quiet" label="Quiet zone" hi="शांत ज़ोन" />
+          <ToolButton id="view" label="View from a seat" hi="सीट से नज़ारा" />
+          <ToolButton id="rescue" label="Backup seats" hi="बैकअप सीटें" />
+        </ToolRow>
 
       </div>
 
@@ -751,7 +757,8 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
             <Icon name="clock" size={18} />
             <div>
               <strong>Time clash</strong>
-              You also have “{clash}” around this time.
+              You also have “{clash}” around this time.{' '}
+              <ToolButton id="conflict" label="Check my timetable" hi="टाइम-टेबल देखें" look="link" />
             </div>
           </div>
         )}
@@ -812,6 +819,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
               <Icon name="info" size={16} /> {t('ev.overBudget')} by {rupees(total - Number(budget))}
             </p>
           )}
+          <ToolButton id="budget" label="Plan the whole outing: ticket, travel, food" hi="पूरा बजट: टिकट, सफ़र, खाना" look="link" />
           <p className="ep-fine">All-in price, no booking fee. Seats lock for 5 minutes once held.</p>
           <div className="ep-facts-card">
             <h3>{t('ev.goodToKnow')}</h3>
@@ -820,8 +828,19 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                 <li key={f}>{f}</li>
               ))}
             </ul>
+            <div className="ep-know-tools">
+              <ToolButton id="nav" label="How to get there" hi="कैसे पहुँचें" look="link" />
+              <ToolButton id="crowd" label="Which gate is quiet now" hi="कौन-सा गेट खाली है" look="link" />
+              <ToolButton id="exit" label="Nearest emergency exit" hi="सबसे पास का निकास" look="link" />
+            </div>
           </div>
           {isDesktop && holdForm}
+          {/* Group tools next to the hold button: book together, find company, split later. */}
+          <ToolRow title="Going with others?" hi="दूसरों के साथ जा रहे हैं?">
+            <ToolButton id="buddy" label="Book with friends" hi="दोस्तों के साथ" />
+            <ToolButton id="companion" label="Find a companion" hi="साथी खोजें" />
+            <ToolButton id="split" label="Split the bill" hi="बिल बाँटें" />
+          </ToolRow>
         </section>
 
         {!isDesktop && (

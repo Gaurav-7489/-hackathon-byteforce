@@ -10,7 +10,7 @@ import type { Booking } from '../lib/api/types'
 import { dateLong, dayParts, downloadIcs, money, time } from '../lib/format'
 import { invalidate, resource } from '../lib/resource'
 import { toast } from '../lib/toast'
-import { ToolStrip } from '../components/ToolStrip'
+import { ToolButton, ToolRow } from '../components/ToolStrip'
 import './bookings.css'
 
 export function Bookings() {
@@ -21,6 +21,14 @@ export function Bookings() {
       <meta name="description" content="Your upcoming and past cinema and bus tickets." />
       <p className="lk-eyebrow">Wallet</p>
       <h1 className="lk-display page-title">My tickets</h1>
+      {/* Ticket-holder tools: what you need after booking. */}
+      <ToolRow title="Your tickets" hi="आपके टिकट">
+        <ToolButton id="vault" label="Save for offline" hi="ऑफ़लाइन सेव करें" />
+        <ToolButton id="exchange" label="Can't go? Return it" hi="टिकट लौटाएँ" />
+        <ToolButton id="split" label="Split the bill" hi="बिल बाँटें" />
+        <ToolButton id="nav" label="Directions" hi="रास्ता" />
+        <ToolButton id="pass" label="Certificates & volunteering" hi="प्रमाणपत्र" />
+      </ToolRow>
       <ErrorBoundary
         key={attempt}
         section="your tickets"
@@ -33,7 +41,6 @@ export function Bookings() {
           <Wallet promise={resource('bookings', api.bookings)} />
         </Suspense>
       </ErrorBoundary>
-      <ToolStrip ids={['vault', 'exchange', 'split', 'nav', 'exit', 'conflict', 'pass', 'companion']} title="Tools for your tickets" hiTitle="आपके टिकट के टूल" />
     </div>
   )
 }

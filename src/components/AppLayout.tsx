@@ -11,6 +11,7 @@ import { toast } from '../lib/toast'
 import { Icon } from './Icon'
 import { Mark } from './Mark'
 import { Toaster } from './Toaster'
+import { ToolButton } from './ToolStrip'
 import './layout.css'
 
 export function ThemeToggle() {
@@ -187,6 +188,12 @@ function DemoMenu() {
               Random failures<small>About 1 in 20 requests fail</small>
             </span>
           </label>
+          <p className="lk-eyebrow">Organizer view</p>
+          <div className="demo-once">
+            <ToolButton id="twin" label="Digital twin" hi="डिजिटल ट्विन" />
+            <ToolButton id="noshow" label="No-show recovery" hi="नो-शो रिकवरी" />
+            <ToolButton id="crowd" label="Gate crowds" hi="गेट की भीड़" />
+          </div>
           <p className="lk-eyebrow">Next action only</p>
           <div className="demo-once">
             <button type="button" className="chip" onClick={() => void once('forceConflictNext', 'Next hold will hit a conflict')}>

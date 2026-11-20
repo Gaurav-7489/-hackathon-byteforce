@@ -11,6 +11,7 @@ import { invalidate, resource } from '../lib/resource'
 import { setMode } from '../lib/mode'
 import { Link } from 'react-router'
 import { useEffect } from 'react'
+import { ToolButton, ToolRow } from '../components/ToolStrip'
 import './explore.css'
 
 /** Trips for bus, shows for cinema — one list per venue type, no tabs. */
@@ -58,6 +59,14 @@ function BrowseKind({ kind, t }: { kind: Kind; t: (k: 'browse.bus' | 'browse.cin
           />
         </div>
       </header>
+      {/* Planning tools belong where you choose what to book. */}
+      <ToolRow title="Plan smart" hi="समझदारी से चुनें">
+        <ToolButton id="match" label="Recommended for you" hi="आपके लिए सुझाव" />
+        <ToolButton id="budget" label="Fits my budget" hi="मेरे बजट में" />
+        <ToolButton id="conflict" label="Fits my timetable" hi="मेरे टाइम-टेबल में" />
+        <ToolButton id="queue" label="Fair queue for busy shows" hi="फ़ेयर क्यू" />
+        <ToolButton id="waitlist" label="Sold out? Join a waitlist" hi="वेटलिस्ट" />
+      </ToolRow>
       <ErrorBoundary
         key={attempt}
         section="this list"

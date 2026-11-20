@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Icon } from './Icon'
 import { FEATURES, type FeatureMeta } from '../features/catalog'
@@ -10,42 +10,43 @@ import { sfx } from '../lib/sound'
 import '../routes/smart.css'
 
 /**
- * Smart tools live inside the booking flow: a row of tool chips on the seat
- * page and on My tickets. Each opens its working tool in a dialog, in place.
+ * A smart tool opened from the place it belongs: a small button that opens
+ * the working tool in a dialog, right there in the flow.
  */
-export function ToolStrip({ ids, title, hiTitle }: { ids?: string[]; title: string; hiTitle: string }) {
+export function ToolButton({ id, label, hi: hiLabel, look = 'chip' }: { id: string; label: string; hi: string; look?: 'chip' | 'link' }) {
   const lang = useLang()
   const hi = lang === 'hi'
-  const [open, setOpen] = useState<string | null>(null)
-  const list = ids ? ids.map((id) => FEATURES.find((f) => f.id === id)!).filter(Boolean) : FEATURES
-  const f = FEATURES.find((x) => x.id === open) ?? null
+  const [open, setOpen] = useState(false)
+  const f = FEATURES.find((x) => x.id === id)!
   return (
-    <section className="tool-strip lk-card" aria-labelledby={`ts-${title}`}>
-      <h2 id={`ts-${title}`} className="tool-strip-title">
-        <Icon name="sparkle" size={16} /> {hi ? hiTitle : title}
-      </h2>
-      <ul className="tool-strip-list">
-        {list.map((t) => (
-          <li key={t.id}>
-            <button
-              type="button"
-              className="tool-chip"
-              onClick={() => {
-                sfx.tap()
-                setOpen(t.id)
-                narrate(hi ? `${t.hi.title}. ${t.hi.line}` : `${t.en.title}. ${t.en.solution}`, lang)
-              }}
-            >
-              <img src={photo(t.photo)} alt="" loading="lazy" />
-              <span>
-                <strong>{hi ? t.hi.title : t.en.title}</strong>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {f && <ToolDialog f={f} hi={hi} onClose={() => setOpen(null)} />}
-    </section>
+    <>
+      <button
+        type="button"
+        className={look === 'link' ? 'tool-link' : 'tool-chip'}
+        onClick={() => {
+          sfx.tap()
+          setOpen(true)
+          narrate(hi ? `${f.hi.title}. ${f.hi.line}` : `${f.en.title}. ${f.en.solution}`, lang)
+        }}
+      >
+        <Icon name={f.icon} size={look === 'link' ? 14 : 16} />
+        <span>{hi ? hiLabel : label}</span>
+      </button>
+      {open && <ToolDialog f={f} hi={hi} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/** A labelled row of tool buttons, e.g. “Find the right seat”. */
+export function ToolRow({ title, hi, children }: { title: string; hi: string; children: ReactNode }) {
+  const lang = useLang()
+  return (
+    <div className="tool-row-inline" role="group" aria-label={lang === 'hi' ? hi : title}>
+      <span className="tool-row-label">
+        <Icon name="sparkle" size={14} /> {lang === 'hi' ? hi : title}
+      </span>
+      {children}
+    </div>
   )
 }
 
