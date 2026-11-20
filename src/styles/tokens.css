@@ -1,0 +1,173 @@
+/* ==========================================================================
+   SeatLock design tokens — the single source of truth, rendered live on /design.
+   Dark is the signature identity ("a venue before the lights come up").
+   All text pairs below are checked to ≥ 4.5:1 on their intended surface.
+   ========================================================================== */
+
+:root {
+  /* --- Typography -------------------------------------------------------- */
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-ui: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+
+  --text-xs: 0.75rem;     /* 12 */
+  --text-sm: 0.875rem;    /* 14 */
+  --text-md: 1rem;        /* 16 */
+  --text-lg: 1.125rem;    /* 18 */
+  --text-xl: 1.375rem;    /* 22 */
+  --text-2xl: 1.75rem;    /* 28 */
+  --text-3xl: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+  --text-display: clamp(3rem, 1.2rem + 7.6vw, 8.25rem);
+
+  --leading-tight: 1.05;
+  --leading-snug: 1.25;
+  --leading-body: 1.55;
+  --tracking-display: -0.035em;
+  --tracking-label: 0.08em;
+
+  /* --- Spacing (4px base) ------------------------------------------------ */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+  --gutter: clamp(1rem, 0.6rem + 1.8vw, 2.5rem);
+  --content-max: 80rem;
+
+  /* --- Radius ------------------------------------------------------------ */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --radius-seat: 10px 10px 6px 6px;
+
+  /* --- Motion ------------------------------------------------------------ */
+  --dur-instant: 120ms;   /* button / seat feedback */
+  --dur-fast: 180ms;      /* hovers, toggles */
+  --dur-base: 260ms;      /* cards */
+  --dur-panel: 360ms;     /* panels, sheets */
+  --dur-page: 520ms;      /* route transitions */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- Layers ------------------------------------------------------------ */
+  --z-canvas: 0;
+  --z-content: 1;
+  --z-sticky: 20;
+  --z-header: 30;
+  --z-sheet: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+
+  /* --- Seat geometry ----------------------------------------------------- */
+  --seat-size: 44px;      /* WCAG 2.5.5 target size */
+  --seat-gap: 6px;
+}
+
+/* --- Dark (signature) ---------------------------------------------------- */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #080b13;
+  --surface: #111623;
+  --surface-2: #1a2232;
+  --surface-3: #232d41;
+  --glass: rgb(17 22 35 / 0.66);
+  --text: #f6f7fb;
+  --text-2: #a7b3c4;      /* 8.2:1 on --bg */
+  --text-3: #8592a6;      /* 5.6:1 on --bg, 4.9:1 on --surface-2 */
+  --border: rgb(255 255 255 / 0.09);
+  --border-strong: rgb(255 255 255 / 0.18);
+
+  --brand: #7065ff;
+  --brand-strong: #8b82ff;
+  --brand-text: #a49dff;  /* brand used as text: 6.9:1 */
+  --on-brand: #ffffff;
+  --ice: #81d9ff;
+  --lime: #d5ff73;
+  --on-lime: #10140a;
+
+  --success: #6ee7a8;
+  --warning: #ffc35c;
+  --danger: #ff7a85;
+  --on-danger: #1b0306;
+
+  --seat-available: #81d9ff;
+  --seat-available-fill: rgb(129 217 255 / 0.08);
+  --seat-selected: #d5ff73;
+  --seat-held: #ffc35c;
+  --seat-booked: #4a5568;
+  --seat-blocked: #2a3343;
+  --seat-ai: #a49dff;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 24px 64px -16px rgb(0 0 0 / 0.75);
+  --glow-brand: 0 0 0 1px rgb(112 101 255 / 0.4), 0 12px 40px -8px rgb(112 101 255 / 0.55);
+  --stage-light: radial-gradient(60% 55% at 50% -10%, rgb(112 101 255 / 0.28), transparent 70%),
+    radial-gradient(40% 40% at 85% 0%, rgb(129 217 255 / 0.14), transparent 70%);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--lime);
+}
+
+/* --- Light --------------------------------------------------------------- */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f8f9fc;
+  --surface: #ffffff;
+  --surface-2: #eef0f6;
+  --surface-3: #e2e6ef;
+  --glass: rgb(255 255 255 / 0.74);
+  --text: #111827;
+  --text-2: #475467;      /* 8.1:1 */
+  --text-3: #5d6b80;      /* 5.4:1 */
+  --border: rgb(17 24 39 / 0.1);
+  --border-strong: rgb(17 24 39 / 0.2);
+
+  --brand: #5146dd;
+  --brand-strong: #4338ca;
+  --brand-text: #4338ca;
+  --on-brand: #ffffff;
+  --ice: #0e7490;
+  --lime: #d5ff73;
+  --on-lime: #10140a;
+
+  --success: #067647;
+  --warning: #9a5b00;
+  --danger: #c01048;
+  --on-danger: #ffffff;
+
+  --seat-available: #0e7490;
+  --seat-available-fill: rgb(14 116 144 / 0.07);
+  --seat-selected: #3f6212;
+  --seat-held: #b45309;
+  --seat-booked: #98a2b3;
+  --seat-blocked: #d0d5dd;
+  --seat-ai: #5146dd;
+
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+  --shadow-md: 0 8px 24px -10px rgb(16 24 40 / 0.18);
+  --shadow-lg: 0 24px 64px -20px rgb(16 24 40 / 0.28);
+  --glow-brand: 0 0 0 1px rgb(81 70 221 / 0.25), 0 12px 32px -10px rgb(81 70 221 / 0.45);
+  --stage-light: radial-gradient(60% 55% at 50% -10%, rgb(81 70 221 / 0.12), transparent 70%),
+    radial-gradient(40% 40% at 85% 0%, rgb(14 116 144 / 0.08), transparent 70%);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms;
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-panel: 0ms;
+    --dur-page: 0ms;
+  }
+}

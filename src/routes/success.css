@@ -1,0 +1,37 @@
+.success {
+  display: grid;
+  gap: var(--space-10);
+  justify-items: center;
+  text-align: center;
+}
+.success-head {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+}
+.success-check {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--on-lime);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--lime) 18%, transparent), 0 0 60px color-mix(in srgb, var(--lime) 40%, transparent);
+}
+.success-title {
+  font-size: var(--text-display);
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+  font-weight: 700;
+}
+.success-sub {
+  color: var(--text-2);
+  max-width: 48ch;
+}
+.success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}

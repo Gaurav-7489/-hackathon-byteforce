@@ -1,0 +1,18 @@
+
+# Local AI agent skills
+.agents/
+.claude/skills/*
+!.claude/skills/seatlock-*/
+
+# Dependencies and build files
+node_modules/
+.next/
+dist/
+build/
+.env
+.env.local
+
+# Test artifacts
+test-results/
+playwright-report/
+*.tsbuildinfo

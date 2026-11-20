@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "threejs-scroll-worlds": {
+      "source": "craftwork.design",
+      "sourceUrl": "https://craftwork.design/skills/threejs-scroll-worlds",
+      "sourceType": "well-known",
+      "computedHash": "25126111e0e9f80369059a455d71fff83cbe08578e0e0fd94f084e135a4d297e",
+      "wellKnownDigest": "sha256:d81e3a4a18ad60faa8ee66c6be2eb4bab5ef962938a850657a53c3e8e08c09fd"
+    }
+  }
+}

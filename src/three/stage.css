@@ -1,0 +1,134 @@
+/* ---------- Live canvas wrapper ----------------------------------------- */
+.stage-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  contain: strict;
+}
+.stage-canvas-gl {
+  position: absolute !important;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stage-canvas[data-ready] .stage-canvas-gl {
+  opacity: 1;
+}
+.stage-canvas-poster {
+  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stage-canvas[data-ready] .stage-canvas-poster {
+  opacity: 0;
+}
+
+/* ---------- CSS fallback venue ------------------------------------------ */
+.stage-fb {
+  --fb-ink: #7065ff;
+  --fb-ice: #81d9ff;
+  --fb-lime: #d5ff73;
+  --fb-bg: #080b13;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(70% 60% at 50% 30%, color-mix(in srgb, var(--fb-ink) 22%, transparent), transparent 70%);
+}
+:root[data-theme='light'] .stage-fb {
+  --fb-bg: #f8f9fc;
+}
+.stage-fb-glow {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  width: 70%;
+  height: 40%;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--fb-ink) 45%, transparent), transparent);
+  filter: blur(30px);
+}
+.stage-fb-wall {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  width: min(62%, 720px);
+  height: 22%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 1.2%;
+  padding: 0 2%;
+  border-radius: 6px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--fb-ink) 30%, #0b0f1c), #0b0f1c);
+  box-shadow: 0 0 60px -10px color-mix(in srgb, var(--fb-ink) 70%, transparent);
+}
+.stage-fb-wall span {
+  flex: 1;
+  height: calc(30% + (sin(var(--i) * 0.7) + 1) * 28%);
+  background: linear-gradient(to top, var(--fb-ink), var(--fb-ice));
+  border-radius: 2px 2px 0 0;
+  opacity: 0.85;
+  transform-origin: bottom;
+  animation: fb-eq 2.4s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.13s);
+}
+@keyframes fb-eq {
+  from { transform: scaleY(0.55); }
+  to { transform: scaleY(1); }
+}
+.stage-fb-lip {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: min(78%, 900px);
+  height: 2px;
+  transform: translateX(-50%);
+  background: var(--fb-lime);
+  box-shadow: 0 0 16px var(--fb-lime), 0 6px 40px color-mix(in srgb, var(--fb-ink) 80%, transparent);
+}
+.stage-fb-beam {
+  position: absolute;
+  top: -6%;
+  width: 26%;
+  height: 80%;
+  transform-origin: 50% 0;
+  clip-path: polygon(47% 0, 53% 0, 100% 100%, 0 100%);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--fb-ink) 45%, transparent), transparent 80%);
+  filter: blur(10px);
+  mix-blend-mode: screen;
+  animation: fb-sway 8s ease-in-out infinite alternate;
+}
+.stage-fb-beam-1 { left: 6%; --a: -16deg; --b: 6deg; }
+.stage-fb-beam-2 { left: 28%; --a: 8deg; --b: -10deg; animation-duration: 10s; background: linear-gradient(to bottom, color-mix(in srgb, var(--fb-ice) 40%, transparent), transparent 75%); }
+.stage-fb-beam-3 { left: 46%; --a: -8deg; --b: 12deg; animation-duration: 9s; }
+.stage-fb-beam-4 { left: 68%; --a: 14deg; --b: -6deg; animation-duration: 11s; background: linear-gradient(to bottom, color-mix(in srgb, var(--fb-ice) 40%, transparent), transparent 75%); }
+@keyframes fb-sway {
+  from { transform: rotate(var(--a)); }
+  to { transform: rotate(var(--b)); }
+}
+.stage-fb-seats {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  top: 48%;
+  height: 80%;
+  transform: perspective(600px) rotateX(58deg);
+  transform-origin: 50% 0;
+  background-image: radial-gradient(ellipse 9px 7px at 50% 50%, color-mix(in srgb, var(--fb-ice) 55%, transparent) 60%, transparent 66%);
+  background-size: 26px 22px;
+  -webkit-mask-image: radial-gradient(70% 90% at 50% 0%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(70% 90% at 50% 0%, #000 30%, transparent 75%);
+  opacity: 0.7;
+}
+.stage-fb-fade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 30%;
+  background: linear-gradient(to top, var(--fb-bg), transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-fb-beam,
+  .stage-fb-wall span {
+    animation: none;
+  }
+}
