@@ -1,7 +1,6 @@
 import {
   Activity,
   lazy,
-  startTransition as startGlobalTransition,
   Suspense,
   use,
   useActionState,
@@ -33,6 +32,7 @@ import { useLang, useT } from '../lib/i18n'
 import { canSpeak, narrate, speak } from '../lib/speech'
 import { readLang } from '../lib/i18n'
 import { ToolButton, ToolRow } from '../components/ToolStrip'
+import { ToolEventContext, setToolHighlight, useToolHighlight } from '../lib/toolBridge'
 import { setMode as applyEventMode } from '../lib/mode'
 import { sfx } from '../lib/sound'
 import { useHold } from '../lib/hold'
@@ -314,7 +314,10 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const feedId = useRef(0)
 
   const selectedSet = new Set(optimisticSelected)
-  const suggestedSet = new Set(suggestion?.seatIds ?? [])
+  // Seats a smart tool is talking about light up in 3D and on the map (same look as AI picks).
+  const toolHi = useToolHighlight()
+  const toolLive = toolHi && toolHi.eventId === event.id ? toolHi : null
+  const suggestedSet = new Set([...(suggestion?.seatIds ?? []), ...(toolLive?.seatIds ?? [])])
   const total = totalFor(optimisticSelected, seats)
   const selectedSeats = optimisticSelected.map((sid) => seats.find((s) => s.id === sid)).filter((s): s is Seat => Boolean(s))
 
@@ -398,8 +401,8 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         setStale(false)
         diffToFeed(lastSeats.current, r.seats)
         lastSeats.current = r.seats
-        // ViewTransition animates seat-state changes on the 2D map.
-        startGlobalTransition(() => setSeats(r.seats))
+        // Plain update: a page-wide view transition on every poll made the map stutter.
+        setSeats(r.seats)
         return r.seats
       })
       .catch(() => {
@@ -555,7 +558,23 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   const counts = { available: 0, held: 0, booked: 0, blocked: 0 }
   for (const s of seats) counts[s.heldByMe ? 'available' : s.status]++
 
-  const focusId = optimisticSelected.at(-1) ?? focusSeat ?? suggestion?.seatIds[0] ?? defaultFocus(seats, event.kind)
+  const focusId = toolLive?.focusId ?? optimisticSelected.at(-1) ?? focusSeat ?? suggestion?.seatIds[0] ?? defaultFocus(seats, event.kind)
+
+  // When a tool publishes seats: show them in 3D (if the device can), move the camera, keep the stage in view.
+  const toolKey = toolLive ? `${toolLive.label}|${toolLive.seatIds.join()}|${toolLive.camera ?? ''}` : ''
+  useEffect(() => {
+    if (!toolLive) return
+    if (mode === 'map' && hasWebGL()) setMode('3d')
+    setCamera(toolLive.camera ?? 'overview')
+    // Put the stage just under the header so it sits above the tool sheet (phones) or beside the panel.
+    const t = setTimeout(() => {
+      const stage = document.querySelector('.ep-viewport') ?? document.querySelector('.ep-stage')
+      if (stage) window.scrollTo({ top: stage.getBoundingClientRect().top + window.scrollY - 64, behavior: 'smooth' })
+    }, 60)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolKey])
+  useEffect(() => () => setToolHighlight(null), [])
 
   // Imperative 3D tooltip: hovering never re-renders the page or the scene.
   const tipRef = useRef<HTMLDivElement>(null)
@@ -608,6 +627,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
   )
 
   return (
+    <ToolEventContext value={event.id}>
     <div className="ep-grid">
       <p className="sr-only" role="status" aria-live="polite">
         {announce}
@@ -719,6 +739,15 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
                 </Suspense>
               </ErrorBoundary>
               <div className="ep-tip" ref={tipRef} hidden role="tooltip" />
+              {toolLive && (
+                <div className="ep-tool-badge" role="status">
+                  <Icon name="sparkle" size={14} />
+                  <span>
+                    <strong>{toolLive.label}</strong>
+                    {toolLive.seatIds.length > 0 && <small>{toolLive.seatIds.length > 6 ? `${toolLive.seatIds.length} seats` : toolLive.seatIds.join(', ')}</small>}
+                  </span>
+                </div>
+              )}
               <div className="seg ep-cams" role="group" aria-label="Camera">
                 {(['overview', 'top', 'seat'] as View[]).map((v) => (
                   <button key={v} type="button" aria-pressed={camera === v} onClick={() => setCamera(v)}>
@@ -870,6 +899,7 @@ function BookingPanel({ eventPromise, seatsPromise }: { eventPromise: Promise<Ev
         </div>
       )}
     </div>
+    </ToolEventContext>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, ViewTransition, type KeyboardEvent, type PointerEvent as RPointerEvent, type WheelEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type WheelEvent } from 'react'
 import type { Kind, Seat } from '../lib/api/types'
 import { money } from '../lib/format'
 import { effectiveStatus, neighbour, STATUS_LABEL, tierLabel, type Direction } from '../lib/seats'
@@ -318,7 +318,6 @@ export function SeatMap({ kind, seats, selected, suggested, lost, onToggle, focu
                   const label = `${seat.id}, row ${seat.row} seat ${seat.number}, ${tierLabel(seat.section)}${seat.isAisle ? ', aisle' : ''}${seat.tags.includes('Window') ? ', window' : ''}${seat.tags.includes('Women only') ? ', women only' : ''}, ${money(seat.price)}, ${mine ? 'your booking' : STATUS_LABEL[status]}${isAi ? ', AI suggestion' : ''}${isLost ? ', just taken' : ''}`
                   return (
                     <div role="gridcell" key={seat.id} style={{ gridColumn: seat.col + 2 }}>
-                      <ViewTransition update="seat-update" default="none">
                         <button
                           type="button"
                           data-seat={seat.id}
@@ -345,7 +344,6 @@ export function SeatMap({ kind, seats, selected, suggested, lost, onToggle, focu
                           {icon ? <Icon name={icon} size={16} /> : <span className="seat-num" aria-hidden="true">{seat.number}</span>}
                           {isAi && <span className="seat-ai-dot" aria-hidden="true"><Icon name="sparkle" size={10} /></span>}
                         </button>
-                      </ViewTransition>
                     </div>
                   )
                 })}

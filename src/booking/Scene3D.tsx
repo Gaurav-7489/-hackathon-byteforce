@@ -302,6 +302,7 @@ function Seats({ layout, seats, selected, suggested, lost, people, onPick, onHov
   }, [])
 
   const keys = layout.seats.map((s, i) => keyFor(byIndex[i], s.tags, s.tier, selected, suggested, lost))
+  const keySig = keys.join('|')
 
   const writeSeat = (i: number, now: number) => {
     const s = layout.seats[i]!
@@ -410,7 +411,9 @@ function Seats({ layout, seats, selected, suggested, lost, people, onPick, onHov
     mesh.computeBoundingSphere()
     if (writePeople(now)) anim.active = true
     invalidate()
-  })
+    // Only when a seat's look or the people setting changes; it used to run (and redraw) on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keySig, people])
 
   useFrame(() => {
     if (!anim.active || !ref.current) return
@@ -766,13 +769,15 @@ function SimpleStage({ mode }: { mode: Mode }) {
 
 export default function Scene3D(props: SceneProps) {
   const ctrl = useMemo(() => ({ orbit: { ...PRESETS[props.layout.mode].overview }, dragging: false }), [props.layout.mode])
-  const maxDpr = typeof window !== 'undefined' && window.innerWidth < 768 ? 1.5 : 2
+  // Cap the pixel ratio: rendering at 2-3x on high-density screens was the main cost.
+  const maxDpr = typeof window !== 'undefined' && window.innerWidth < 768 ? 1.25 : 1.5
+  const hiDpi = typeof window !== 'undefined' && window.devicePixelRatio >= 2
   const focus = props.focusId ? (props.layout.index.get(props.focusId) ?? null) : null
   return (
     <Canvas
       frameloop="demand"
       dpr={[1, maxDpr]}
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      gl={{ antialias: !hiDpi, powerPreference: 'high-performance' }}
       camera={{ fov: 42, near: 0.1, far: 120, position: [0, 12, 20] }}
       style={{ touchAction: 'none' }}
       aria-hidden="true"

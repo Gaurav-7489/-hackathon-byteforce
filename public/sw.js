@@ -1,5 +1,5 @@
 /* SeatLock service worker — offline page + static asset cache. Never caches API calls. */
-const VERSION = 'seatlock-v3'
+const VERSION = 'seatlock-v4'
 const STATIC = `${VERSION}-static`
 const PAGES = `${VERSION}-pages`
 const PRECACHE = ['/offline.html', '/icon.svg', '/manifest.webmanifest']

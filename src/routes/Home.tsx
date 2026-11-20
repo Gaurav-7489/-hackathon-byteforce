@@ -3,7 +3,9 @@ import { Link } from 'react-router'
 import { Icon } from '../components/Icon'
 import { VenuePhoto } from '../components/Photo'
 import type { Mode } from '../booking/data'
+import { claimAudio, releaseAudio } from '../lib/audioFocus'
 import { setMode } from '../lib/mode'
+import { useAuth } from '../lib/auth'
 import { PHOTO } from '../lib/photos'
 import { useT, type TKey } from '../lib/i18n'
 import { sfx, useSoundOn } from '../lib/sound'
@@ -21,7 +23,8 @@ const ROWS: { kind: Mode; title: TKey; body: TKey; cta: TKey }[] = [
 export function Home() {
   const t = useT()
   const hour = new Date().getHours()
-  const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const { user } = useAuth()
+  const greet = `${hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}${user ? `, ${user.name.split(' ')[0]}` : ''}`
   return (
     <div className="container page home">
       <title>SeatLock · Bus and cinema seats</title>
@@ -50,8 +53,12 @@ function VideoRow({ kind, title, body, cta }: { kind: Mode; title: string; body:
     const v = ref.current
     if (!v) return
     v.muted = !soundOn
-    if (soundOn) void v.play().catch(() => {})
-  }, [soundOn])
+    if (soundOn) {
+      // Only one film plays with sound; turning this one on mutes the other and stops speech.
+      claimAudio(`film-${kind}`, () => setSoundOn(false))
+      void v.play().catch(() => {})
+    } else releaseAudio(`film-${kind}`)
+  }, [soundOn, kind])
 
   const toggleSound = () => {
     sfx.tap()

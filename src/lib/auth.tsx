@@ -1,11 +1,13 @@
 import { createContext, use, useEffect, useState, type ReactNode } from 'react'
 import { getToken, setToken, setUnauthorizedHandler } from './api/client'
 import type { User } from './api/types'
+import { toast } from './toast'
 
 interface AuthState {
   user: User | null
   signIn: (token: string, user: User) => void
   signOut: () => void
+  updateUser: (user: User) => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -35,8 +37,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    setUnauthorizedHandler(signOut)
+    setUnauthorizedHandler(() => {
+      if (readUser()) toast.warning('Your session ended', 'Please sign in again to keep booking.')
+      signOut()
+    })
   })
+
+  const updateUser = (next: User) => {
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(next))
+    } catch {
+      /* ignore */
+    }
+    setUser(next)
+  }
 
   const signIn = (token: string, next: User) => {
     setToken(token)
@@ -48,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(next)
   }
 
-  return <AuthContext value={{ user, signIn, signOut }}>{children}</AuthContext>
+  return <AuthContext value={{ user, signIn, signOut, updateUser }}>{children}</AuthContext>
 }
 
 export function useAuth(): AuthState {

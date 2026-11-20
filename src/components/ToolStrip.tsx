@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Icon } from './Icon'
@@ -7,6 +8,7 @@ import { useLang } from '../lib/i18n'
 import { photo } from '../lib/photos'
 import { canSpeak, narrate, speak } from '../lib/speech'
 import { sfx } from '../lib/sound'
+import { setToolHighlight, useToolEvent } from '../lib/toolBridge'
 import '../routes/smart.css'
 
 /**
@@ -32,7 +34,8 @@ export function ToolButton({ id, label, hi: hiLabel, look = 'chip' }: { id: stri
         <Icon name={f.icon} size={look === 'link' ? 14 : 16} />
         <span>{hi ? hiLabel : label}</span>
       </button>
-      {open && <ToolDialog f={f} hi={hi} onClose={() => setOpen(false)} />}
+      {/* Portal: the dialog must not live inside a column the docked layout hides. */}
+      {open && createPortal(<ToolDialog f={f} hi={hi} onClose={() => setOpen(false)} />, document.body)}
     </>
   )
 }
@@ -50,17 +53,37 @@ export function ToolRow({ title, hi, children }: { title: string; hi: string; ch
   )
 }
 
+// Only one docked panel at a time: opening another closes the previous one.
+let closeDocked: (() => void) | null = null
+
 export function ToolDialog({ f, hi, onClose }: { f: FeatureMeta; hi: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const Tool = TOOLS[f.id]!
+  // On the seat page the tool docks beside the 3D view (non-modal) so its seats can be seen there.
+  const docked = useToolEvent() !== null
   useEffect(() => {
     const d = ref.current
-    if (d && !d.open) d.showModal()
-    return () => d?.close()
-  }, [f.id])
+    if (!d || d.open) return
+    if (docked) {
+      if (closeDocked) closeDocked()
+      closeDocked = onClose
+      document.body.classList.add('tool-docked')
+      d.show()
+    } else d.showModal()
+    const onKey = (e: KeyboardEvent) => docked && e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      if (closeDocked === onClose) closeDocked = null
+      setToolHighlight(null)
+      if (docked) document.body.classList.remove('tool-docked')
+      d.close()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.id, docked])
   const said = hi ? `${f.hi.title}. ${f.hi.line}` : `${f.en.title}. ${f.en.problem} ${f.en.solution}`
   return (
-    <dialog ref={ref} className="dialog smart-dialog" aria-labelledby="tool-title" onClose={onClose} onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <dialog ref={ref} className={`dialog smart-dialog${docked ? ' is-docked' : ''}`} aria-labelledby="tool-title" onClose={onClose} onClick={(e) => !docked && e.target === e.currentTarget && onClose()}>
       <header className="smart-hero">
         <img src={photo(f.photo)} alt="" />
         <span className="smart-hero-shade" aria-hidden="true" />

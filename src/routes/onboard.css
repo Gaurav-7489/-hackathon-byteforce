@@ -315,10 +315,12 @@
 }
 
 /* Sticky CTA on phones, inline on desktop (same as the reference flow) */
+/* Sticky (not fixed): the sheet is animated with a transform, which made a fixed
+   bar float over the password field on phones. */
 .ob-cta {
-  position: fixed;
-  inset-inline: 0;
+  position: sticky;
   bottom: 0;
+  margin: 24px -20px 0;
   padding: 12px 20px max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--lk-line);
   background: var(--lk-glass);
@@ -335,4 +337,76 @@
     background: none;
     backdrop-filter: none;
   }
+}
+
+/* Sign up / forgot password */
+.ob-switch {
+  margin-top: 16px;
+  font-size: var(--text-sm);
+  color: var(--lk-muted);
+}
+.ob-switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ob-hint {
+  margin-top: 6px;
+  font-size: var(--text-xs);
+  color: var(--lk-muted);
+}
+.ob-pw {
+  position: relative;
+}
+.ob-pw .lk-input {
+  padding-right: 48px;
+}
+.ob-pw-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--lk-muted);
+  cursor: pointer;
+}
+.ob-strength {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.ob-strength span {
+  height: 5px;
+  border-radius: 99px;
+  background: var(--lk-line);
+  transition: background 0.25s;
+}
+.ob-strength small {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+  color: var(--lk-muted);
+}
+.ob-strength[data-score='1'] span:nth-child(-n + 1) { background: #c62828; }
+.ob-strength[data-score='2'] span:nth-child(-n + 2) { background: #e08a00; }
+.ob-strength[data-score='3'] span:nth-child(-n + 3) { background: #2e9d5b; }
+.ob-strength[data-score='4'] span:nth-child(-n + 4) { background: #1f7a4a; }
+.ob-terms {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.ob-terms input {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--lk-signal);
 }

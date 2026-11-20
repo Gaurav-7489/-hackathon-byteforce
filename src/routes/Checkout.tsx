@@ -65,6 +65,9 @@ export function Checkout() {
           setActive(null)
           return { error: null }
         }
+        // Any other failure gets its own page: what happened, no money taken, hold time left.
+        toast.error('Booking didn’t go through', 'No money was taken. Your seats are still held.')
+        await navigate('/failed', { state: { reason: friendlyMessage(err) } })
         return { error: friendlyMessage(err) }
       }
     },
